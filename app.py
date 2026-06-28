@@ -4,28 +4,26 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# =====================================================================
-# CONFIGURAÇÕES E CSS (DESIGN PERSONALIZADO)
-# =====================================================================
+# --- CONFIGURAÇÃO E CSS FINAL ---
 st.set_page_config(page_title="Controle de RMs", layout="centered")
 
 st.markdown("""
 <style>
-    /* Estilo da 'Janela Flutuante' de Login */
-    .login-card {
+    /* Janela Flutuante (Card) */
+    .login-box {
         background-color: #ffffff;
         padding: 40px;
-        border-radius: 12px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-        max-width: 400px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        max-width: 380px;
         margin: 50px auto;
-        color: #333;
+        border: 1px solid #e0e0e0;
     }
-    /* Limita a largura dos campos para parecerem ter 13 dígitos */
+    /* Campos de input com largura fixa (aprox. 13 dígitos) */
     .stTextInput > div > div > input {
         max-width: 250px !important;
     }
-    /* Estilo do Botão Azul */
+    /* Botão azul robusto */
     div.stButton > button {
         width: 100% !important;
         background-color: #2e7bb0 !important;
@@ -34,29 +32,24 @@ st.markdown("""
         border: none !important;
         padding: 12px !important;
         border-radius: 5px !important;
-        margin-top: 20px !important;
+        margin-top: 15px !important;
     }
-    h2 { text-align: center; color: #2e7bb0; margin-bottom: 25px; }
-    .stApp { background-color: #f4f7f6; }
+    h2 { color: #2e7bb0; text-align: center; margin-bottom: 25px; }
 </style>
 """, unsafe_allow_html=True)
 
-# =====================================================================
-# LÓGICA DE LOGIN
-# =====================================================================
+# --- LÓGICA DE LOGIN ---
 if 'perfil_logado' not in st.session_state:
     st.session_state['perfil_logado'] = None
 
 if st.session_state['perfil_logado'] is None:
-    # Cria a janela flutuante
-    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+    st.markdown('<div class="login-box">', unsafe_allow_html=True)
     st.markdown("<h2>FAZER LOGIN DA CONTA</h2>", unsafe_allow_html=True)
     
     usuario = st.text_input("Email")
     senha = st.text_input("Senha", type="password")
     
     if st.button("Fazer Login"):
-        # Lógica de validação (ajuste conforme necessário)
         if usuario == "admin" and senha == "12345":
             st.session_state['perfil_logado'] = "Admin"
             st.rerun()
@@ -64,17 +57,15 @@ if st.session_state['perfil_logado'] is None:
             st.session_state['perfil_logado'] = "Visitante"
             st.rerun()
         else:
-            st.error("Email ou senha incorretos.")
+            st.error("Dados inválidos.")
             
-    st.markdown("<br><p style='font-size: 13px; color: #555;'><b>OBS:</b><br>Login: visitante<br>Senha: 123</p>", unsafe_allow_html=True)
+    st.markdown("<br><p style='font-size: 12px; color: #777;'><b>OBS:</b><br>Login: visitante<br>Senha: 123</p>", unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# =====================================================================
-# SE O LOGIN FOR SUCESSO (ÁREA LOGADA)
-# =====================================================================
+# --- ÁREA LOGADA ---
+# (Seu código de Dashboard, Painel, etc., vem aqui)
 st.title("📦 Controle de RMs")
-# Aqui entra o restante do seu sistema (Dashboard, Painel, etc.)
 if st.sidebar.button("🚪 Sair"):
     st.session_state['perfil_logado'] = None
     st.rerun()
