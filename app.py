@@ -102,4 +102,11 @@ with tabs[1]:
                 if st.button(f"✅ Concluir RM {id_rm}", key=f"btn_{id_rm}"):
                     st.session_state[f'concluir_{id_rm}'] = True
                 if st.session_state.get(f'concluir_{id_rm}'):
-                    with st.form(f"f_{id_rm}")
+                    with st.form(f"f_{id_rm}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.form_submit_button("Confirmar Retirada"):
+                            agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cell = sheet.find(id_rm, in_column=1)
+                            sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
+                            recarregar_dados()
+            else: st.write("Apenas Administradores podem
