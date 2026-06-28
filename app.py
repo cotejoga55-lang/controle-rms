@@ -93,7 +93,7 @@ if st.session_state['perfil_logado'] is None:
 # 4. SISTEMA LOGADO 
 # O código abaixo SÓ É LIDO se o usuário estiver logado
 st.sidebar.title("Configurações")
-if st.sidebar.button("🚪 Sair"):
+if st.sidebar.button("🚪 Sair", key="btn_sair"):
     st.session_state['perfil_logado'] = None
     st.rerun()
 
