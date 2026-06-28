@@ -91,7 +91,4 @@ with tabs[0]:
     c2.markdown(f'<div class="metric-card"><h3>RMs Concluídas</h3><h1>{len(df[df["status"] == "Concluída"])}</h1></div>', unsafe_allow_html=True)
     c3.markdown(f'<div class="metric-card"><h3>Total de RMs</h3><h1>{len(df)}</h1></div>', unsafe_allow_html=True)
 
-# --- PAINEL ---
-with tabs[1]:
-    st.subheader("Gestão de RMs")
-    for _, row in df[df['status'] == 'Aberta
+# --- PAINEL
