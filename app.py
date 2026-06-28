@@ -86,7 +86,9 @@ if st.session_state['perfil_logado'] is None:
 
         else: st.error("Usuário ou senha inválidos.")
 
-    st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
+    st.info("OBS: Login para Visitante: usuário '
+    visitante' 
+    senha '123'")
 
     st.stop()
 
