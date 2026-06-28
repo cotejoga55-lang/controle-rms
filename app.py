@@ -8,7 +8,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 # CONFIGURAÇÕES E CONEXÃO
 # =====================================================================
 st.set_page_config(page_title="Controle de RMs", layout="wide")
-
+st.markdown("""
+<style>
+    /* Alvo específico para os inputs de texto */
+    .stTextInput > div > div > input {
+        max-width: 150px !important; /* Aproximadamente 9-10 caracteres */
+    }
+</style>
+""", unsafe_allow_html=True)
 CREDENCIAIS = {
     "Admin": {"usuario": "admin", "senha": "12345"},
     "Visitante": {"usuario": "visitante", "senha": "123"}
