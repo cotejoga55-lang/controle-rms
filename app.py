@@ -96,9 +96,6 @@ st.sidebar.title("Configurações")
 if st.sidebar.button("🚪 Sair", key="btn_sair"):
     st.session_state['perfil_logado'] = None
     st.rerun()
-
-# Agora o título só aparece uma vez, aqui dentro
-st.title("📦 Sistema de Controle de RMs")
 # =====================================================================
 
 # LÓGICA E ABAS
