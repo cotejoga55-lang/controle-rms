@@ -98,3 +98,10 @@ with tabs[1]:
     for _, row in abertas.iterrows():
         id_rm = str(row['id'])
         with st.expander(f"RM: {row['numero_rm']} | Solicitante: {row['solicitante']}"):
+            if es_admin:
+                if st.button(f"✅ Concluir RM {id_rm}", key=f"btn_{id_rm}"):
+                    st.session_state[f'concluir_{id_rm}'] = True
+                if st.session_state.get(f'concluir_{id_rm}'):
+                    with st.form(f"f_{id_rm}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.
