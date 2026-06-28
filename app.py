@@ -1,91 +1,85 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
 # =====================================================================
-# CSS FORÇADO (Otimizado para o seu desenho)
+# CONFIGURAÇÃO E CSS RADICAL (PARA MANTER O LAYOUT FIXO)
 # =====================================================================
-st.set_page_config(page_title="Controle de RMs", layout="centered")
+st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 st.markdown("""
 <style>
-    /* O container principal que centraliza tudo */
-    .main-login-wrapper {
+    /* Esconde o menu do Streamlit para deixar o visual limpo */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Força o fundo da página inteira */
+    .stApp {
+        background-color: #1a1a1a; 
+    }
+
+    /* O Card de Login - Centralizado e com largura fixa */
+    .login-wrapper {
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 80vh;
+        height: 80vh;
     }
     
-    /* A caixa de login em si */
     .login-box {
         background-color: #ffffff;
         padding: 40px;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-        width: 350px !important; /* Largura fixa como no seu desenho */
-        text-align: center;
-        border: 1px solid #ddd;
+        border-radius: 8px;
+        width: 400px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
-    
-    /* Força os inputs a terem tamanho consistente */
+
+    /* Ajuste fino dos inputs dentro do card */
     .stTextInput > div > div > input {
         width: 100% !important;
-        text-align: center;
+        padding: 10px !important;
     }
-    
-    /* Botão Azul */
+
+    /* Botão estilizado */
     div.stButton > button {
         width: 100% !important;
         background-color: #2e7bb0 !important;
         color: white !important;
-        font-weight: bold !important;
-        border-radius: 5px !important;
-        margin-top: 20px !important;
+        font-weight: bold;
+        border: none;
+        padding: 12px;
+        border-radius: 4px;
+        margin-top: 10px;
     }
     
-    h2 { color: #2e7bb0; margin-bottom: 25px; }
+    h2 { color: #2e7bb0; text-align: center; margin-bottom: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# LÓGICA DE LOGIN
+# ESTRUTURA DO LOGIN
 # =====================================================================
-if 'perfil_logado' not in st.session_state:
-    st.session_state['perfil_logado'] = None
+if 'logado' not in st.session_state: st.session_state['logado'] = False
 
-if st.session_state['perfil_logado'] is None:
-    st.markdown('<div class="main-login-wrapper"><div class="login-box">', unsafe_allow_html=True)
+if not st.session_state['logado']:
+    st.markdown('<div class="login-wrapper"><div class="login-box">', unsafe_allow_html=True)
     st.markdown("<h2>FAZER LOGIN DA CONTA</h2>", unsafe_allow_html=True)
     
-    usuario = st.text_input("Email", placeholder="Digite seu usuário")
-    senha = st.text_input("Senha", type="password", placeholder="Digite sua senha")
+    usuario = st.text_input("Email")
+    senha = st.text_input("Senha", type="password")
     
     if st.button("Fazer Login"):
         if usuario == "admin" and senha == "12345":
-            st.session_state['perfil_logado'] = "Admin"
-            st.rerun()
-        elif usuario == "visitante" and senha == "123":
-            st.session_state['perfil_logado'] = "Visitante"
+            st.session_state['logado'] = True
             st.rerun()
         else:
-            st.error("Credenciais inválidas.")
+            st.error("Usuário ou senha incorretos.")
             
-    st.markdown("""
-        <div style='margin-top: 20px; font-size: 12px; color: #777;'>
-        OBS: Visitante: visitante / 123
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
     st.stop()
 
 # =====================================================================
-# ÁREA LOGADA
+# CONTEÚDO PÓS-LOGIN
 # =====================================================================
-st.title("📦 Controle de RMs")
-if st.sidebar.button("🚪 Sair"):
-    st.session_state['perfil_logado'] = None
+st.title("📦 Sistema de Controle de RMs")
+if st.sidebar.button("Sair"):
+    st.session_state['logado'] = False
     st.rerun()
