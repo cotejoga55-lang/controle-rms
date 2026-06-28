@@ -1,42 +1,52 @@
 import streamlit as st
 
-# Configuração simples
-st.set_page_config(page_title="Controle de RMs", layout="centered")
+# Configuração de Layout
+st.set_page_config(page_title="Controle de RMs", layout="wide")
+
+# CSS para forçar a centralização e o tamanho fixo
+st.markdown("""
+<style>
+    .block-container { padding-top: 2rem !important; }
+    .stApp { background-color: #1a1a1a; }
+    .login-wrapper { display: flex; justify-content: center; align-items: center; height: 80vh; }
+    .login-card { background-color: #ffffff; padding: 40px; border-radius: 8px; width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
+</style>
+""", unsafe_allow_html=True)
 
 # Lógica de Login
-if 'logado' not in st.session_state:
-    st.session_state['logado'] = False
+if 'logado' not in st.session_state: st.session_state['logado'] = False
 
+# --- TELA DE LOGIN ---
 if not st.session_state['logado']:
-    # Usamos uma coluna central para criar o efeito de janela flutuante
-    # O Streamlit centraliza automaticamente se usarmos um layout equilibrado
-    _, col_centro, _ = st.columns([1, 2, 1])
+    st.markdown('<div class="login-wrapper"><div class="login-card">', unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#007bff;'>FAZER LOGIN DA CONTA</h2>", unsafe_allow_html=True)
     
-    with col_centro:
-        st.markdown("<h2 style='text-align: center;'>Controle de RMs</h2>", unsafe_allow_html=True)
-        
-        # O 'st.form' é a forma nativa e correta de fazer login no Streamlit
-        with st.form("login_form"):
-            user = st.text_input("Usuário")
-            pw = st.text_input("Senha", type="password")
-            submitted = st.form_submit_button("Fazer Login")
+    user = st.text_input("Email")
+    pw = st.text_input("Senha", type="password")
+    
+    if st.button("Fazer Login"):
+        if user == "admin" and pw == "12345":
+            st.session_state['logado'] = True
+            st.rerun() # Recarrega para mostrar a tela logada
+        else:
+            st.error("Credenciais inválidas")
             
-            if submitted:
-                if user == "admin" and pw == "12345":
-                    st.session_state['logado'] = True
-                    st.rerun()
-                elif user == "visitante" and pw == "123":
-                    st.session_state['logado'] = True
-                    st.rerun()
-                else:
-                    st.error("Usuário ou senha inválidos")
+    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.stop() # PARA TUDO AQUI
 
-        st.info("OBS para visitantes: login: visitante / senha: 123")
-    
-    st.stop() # Bloqueia o carregamento do restante do site
-
-# Área logada
+# --- TELA LOGADA (O QUE APARECE DEPOIS) ---
+# A partir daqui, o código só roda se logado for True
 st.title("📦 Sistema de Controle de RMs")
+st.sidebar.success("Bem-vindo!")
+
+# Exemplo de conteúdo logado
+tab1, tab2 = st.tabs(["Painel Principal", "Configurações"])
+
+with tab1:
+    st.write("Aqui você pode gerenciar suas RMs.")
+    # Coloque suas tabelas e lógica de banco de dados aqui
+    st.table({"RM": [101, 102], "Status": ["Pendente", "Aprovado"]})
+
 if st.sidebar.button("Sair"):
     st.session_state['logado'] = False
     st.rerun()
