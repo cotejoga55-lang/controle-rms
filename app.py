@@ -4,26 +4,18 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# =====================================================================
-# CONFIGURAÇÕES E CONEXÃO
-# =====================================================================
+# 1. CONFIGURAÇÕES INICIAIS
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# (Aqui você mantém suas funções de banco de dados normalmente)
-def conectar_banco():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds_dict = st.secrets["gcp"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-    return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
-
-# =====================================================================
-# LÓGICA DE LOGIN (A ÚNICA QUE APARECE ANTES DO LOGIN)
-# =====================================================================
+# 2. LÓGICA DE ESTADO
 if 'logado' not in st.session_state:
     st.session_state['logado'] = False
+    st.session_state['perfil'] = None
 
+# =====================================================================
+# BLOCO 1: TELA DE LOGIN
+# =====================================================================
 if not st.session_state['logado']:
-    # TELA DE LOGIN CENTRALIZADA
     _, col_centro, _ = st.columns([1, 2, 1])
     with col_centro:
         st.markdown("<h2 style='text-align: center;'>Controle de RMs</h2>", unsafe_allow_html=True)
@@ -31,37 +23,48 @@ if not st.session_state['logado']:
             user = st.text_input("Usuário")
             pw = st.text_input("Senha", type="password")
             if st.form_submit_button("Fazer Login"):
-                if (user == "admin" and pw == "12345") or (user == "visitante" and pw == "123"):
+                if (user == "admin" and pw == "12345"):
                     st.session_state['logado'] = True
-                    st.session_state['perfil'] = "Admin" if user == "admin" else "Visitante"
+                    st.session_state['perfil'] = "Admin"
+                    st.rerun()
+                elif (user == "visitante" and pw == "123"):
+                    st.session_state['logado'] = True
+                    st.session_state['perfil'] = "Visitante"
                     st.rerun()
                 else:
                     st.error("Usuário ou senha inválidos")
     
-    # O st.stop() é CRUCIAL aqui. Ele impede que qualquer coisa abaixo seja desenhada
+    # IMPORTANTE: st.stop() aqui garante que NADA abaixo seja lido
     st.stop() 
 
 # =====================================================================
-# ÁREA LOGADA (SÓ É EXIBIDA APÓS O LOGIN)
+# BLOCO 2: ÁREA LOGADA (Só é lido se o código passar do st.stop() acima)
 # =====================================================================
-# Agora, como o st.stop() acima bloqueou a execução para quem não logou,
-# tudo o que você escrever aqui embaixo aparecerá APENAS para quem está logado.
 
+# FUNÇÕES DE BANCO (Só rodam depois de logar)
+def conectar_banco():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds_dict = st.secrets["gcp"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
+
+# CARREGA DADOS APENAS APÓS O LOGIN
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
-es_admin = (st.session_state.get('perfil') == "Admin")
+es_admin = (st.session_state['perfil'] == "Admin")
+
+# INTERFACE LOGADA
+st.title("📦 Sistema de Controle de RMs")
 
 with st.sidebar:
-    st.write(f"👤 Perfil: **{st.session_state.get('perfil')}**")
+    st.write(f"👤 Perfil: **{st.session_state['perfil']}**")
     if st.button("🚪 Sair"):
         st.session_state['logado'] = False
         st.rerun()
 
-st.title("📦 Sistema de Controle de RMs") # O título só aparece aqui
-
-# Lógica das suas abas
 tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
 
+# --- (O RESTO DO SEU CÓDIGO DE ABAS VAI AQUI) ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
-    # ... (seu código das abas aqui)
+    # ... resto do código ...
