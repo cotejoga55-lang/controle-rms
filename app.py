@@ -90,11 +90,6 @@ if st.session_state['perfil_logado'] is None:
     
     st.stop() # Bloqueia TUDO o que vier abaixo se não estiver logado
 
-# 4. SISTEMA LOGADO 
-# O código abaixo SÓ É LIDO se o usuário estiver logado
-if st.sidebar.button("🚪 Sair", key="btn_sair"):
-    st.session_state['perfil_logado'] = None
-    st.rerun()
 # =====================================================================
 
 # LÓGICA E ABAS
