@@ -207,4 +207,29 @@ if es_admin:
 with tabs[-1]:
 
     st.dataframe(df, use_container_width=True)
-
+# --- ABA: CONSULTA RÁPIDA ---
+# Adicione "🔍 Consulta" à lista de abas no topo se necessário
+with tabs[3]: # Ajuste o índice se você adicionou novas abas
+    st.subheader("🔍 Consultar Status de RM")
+    busca_rm = st.text_input("Digite o número da RM para consultar:")
+    
+    if busca_rm:
+        resultado = df[df['numero_rm'] == busca_rm]
+        
+        if not resultado.empty:
+            rm = resultado.iloc[0]
+            # Janela flutuante (Popover)
+            with st.popover("Ver Detalhes da RM", use_container_width=True):
+                st.markdown(f"### Detalhes RM: {rm['numero_rm']}")
+                st.write(f"**Status:** {rm['status']}")
+                st.write(f"**Solicitante:** {rm['solicitante']}")
+                st.write(f"**Data Entrada:** {rm['data_entrada']}")
+                
+                if rm['status'] == 'Concluída':
+                    st.success("✅ RM Concluída")
+                    st.write(f"**Data Retirada:** {rm['data_retirada']}")
+                    st.write(f"**Quem Retirou:** {rm['quem_retirou']}")
+                else:
+                    st.warning("⚠️ RM ainda em aberto.")
+        else:
+            st.error("RM não encontrada.")
