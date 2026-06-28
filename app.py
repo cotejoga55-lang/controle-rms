@@ -1,85 +1,42 @@
 import streamlit as st
 
-# Configuração da página para limpar o layout
-st.set_page_config(page_title="Controle de RMs", layout="wide")
-
-# CSS para forçar o tamanho fixo da janela e centralizar
-st.markdown("""
-<style>
-    /* Esconde o menu lateral e cabeçalho padrão do Streamlit */
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Fundo da tela */
-    .stApp {
-        background-color: #1a1a1a;
-    }
-    
-    /* Container centralizador */
-    .login-page-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        width: 100vw;
-    }
-    
-    /* A JANELA FLUTUANTE (CARD) */
-    .login-card {
-        background-color: #ffffff;
-        padding: 40px;
-        border-radius: 10px;
-        width: 400px; /* Largura fixa */
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        text-align: center;
-    }
-
-    /* Título */
-    h2 {
-        color: #2e7bb0;
-        margin-bottom: 25px;
-        font-size: 24px;
-    }
-
-    /* Inputs fixos */
-    .stTextInput input {
-        width: 100% !important;
-    }
-    
-    /* Botão Azul */
-    div.stButton > button {
-        width: 100% !important;
-        background-color: #2e7bb0 !important;
-        color: white !important;
-        font-weight: bold;
-        border-radius: 5px;
-        border: none;
-        padding: 10px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Configuração simples
+st.set_page_config(page_title="Controle de RMs", layout="centered")
 
 # Lógica de Login
-if 'logado' not in st.session_state: st.session_state['logado'] = False
+if 'logado' not in st.session_state:
+    st.session_state['logado'] = False
 
 if not st.session_state['logado']:
-    # Envolve o formulário na nossa div customizada
-    st.markdown('<div class="login-page-container"><div class="login-card">', unsafe_allow_html=True)
-    st.markdown("<h2>FAZER LOGIN DA CONTA</h2>", unsafe_allow_html=True)
+    # Usamos uma coluna central para criar o efeito de janela flutuante
+    # O Streamlit centraliza automaticamente se usarmos um layout equilibrado
+    _, col_centro, _ = st.columns([1, 2, 1])
     
-    user = st.text_input("Email")
-    pw = st.text_input("Senha", type="password")
-    
-    if st.button("Fazer Login"):
-        if user == "admin" and pw == "12345":
-            st.session_state['logado'] = True
-            st.rerun()
-        else:
-            st.error("Credenciais incorretas")
+    with col_centro:
+        st.markdown("<h2 style='text-align: center;'>Controle de RMs</h2>", unsafe_allow_html=True)
+        
+        # O 'st.form' é a forma nativa e correta de fazer login no Streamlit
+        with st.form("login_form"):
+            user = st.text_input("Usuário")
+            pw = st.text_input("Senha", type="password")
+            submitted = st.form_submit_button("Fazer Login")
             
-    st.markdown('</div></div>', unsafe_allow_html=True)
-    st.stop() # Bloqueia o restante da página se não estiver logado
+            if submitted:
+                if user == "admin" and pw == "12345":
+                    st.session_state['logado'] = True
+                    st.rerun()
+                elif user == "visitante" and pw == "123":
+                    st.session_state['logado'] = True
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha inválidos")
 
-# Conteúdo após login
+        st.info("OBS para visitantes: login: visitante / senha: 123")
+    
+    st.stop() # Bloqueia o carregamento do restante do site
+
+# Área logada
 st.title("📦 Sistema de Controle de RMs")
+if st.sidebar.button("Sair"):
+    st.session_state['logado'] = False
+    st.rerun()
