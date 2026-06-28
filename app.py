@@ -5,12 +5,29 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # =====================================================================
-# CONFIGURAÇÕES E CONEXÃO
+# CONFIGURAÇÃO DE PÁGINA E CSS (LOGIN CENTRALIZADO)
 # =====================================================================
-CREDENCIAIS = {
-    "Admin": {"usuario": "admin", "senha": "12345"},
-    "Visitante": {"usuario": "visitante", "senha": "123"}
-}
+st.set_page_config(page_title="Controle de RMs", layout="wide")
+
+st.markdown("""
+<style>
+    .stApp {background-color: #1a1a1a;}
+    .login-wrapper { display: flex; justify-content: center; align-items: center; height: 80vh; }
+    .login-card { 
+        background-color: #ffffff; 
+        padding: 40px; 
+        border-radius: 8px; 
+        width: 380px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================================================
+# LÓGICA DE CONEXÃO E ESTADO
+# =====================================================================
+CREDENCIAIS = {"Admin": {"usuario": "admin", "senha": "12345"}, "Visitante": {"usuario": "visitante", "senha": "123"}}
 
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -18,22 +35,22 @@ def conectar_banco():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
-# Função para forçar atualização
 def recarregar_dados():
     st.cache_data.clear()
     st.rerun()
 
-# =====================================================================
-# INTERFACE E LOGIN
-# =====================================================================
-st.set_page_config(page_title="Controle de RMs", layout="wide")
-
 if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
 
+# =====================================================================
+# TELA DE LOGIN (Isolada para não quebrar o layout)
+# =====================================================================
 if st.session_state['perfil_logado'] is None:
-    st.title("🔑 Login - Sistema de Controle de RMs")
+    st.markdown('<div class="login-wrapper"><div class="login-card">', unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#2e7bb0;'>FAZER LOGIN</h2>", unsafe_allow_html=True)
+    
     usuario = st.text_input("Usuário:")
     senha = st.text_input("Senha:", type="password")
+    
     if st.button("Entrar"):
         if usuario == CREDENCIAIS["Admin"]["usuario"] and senha == CREDENCIAIS["Admin"]["senha"]:
             st.session_state['perfil_logado'] = "Admin"
@@ -42,11 +59,12 @@ if st.session_state['perfil_logado'] is None:
             st.session_state['perfil_logado'] = "Visitante"
             st.rerun()
         else: st.error("Usuário ou senha inválidos.")
-    st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
-    st.stop()
+    
+    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.stop() # Bloqueia o restante do código até o login
 
 # =====================================================================
-# LÓGICA E ABAS
+# SISTEMA DE RMs (CARREGA APÓS LOGIN)
 # =====================================================================
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
@@ -76,7 +94,7 @@ with tabs[1]:
     for _, row in abertas.iterrows():
         with st.expander(f"RM: {row['numero_rm']} - Solicitante: {row['solicitante']}"):
             if es_admin:
-                if st.button(f"✅ Marcar como Concluída", key=f"btn_{row['id']}"):
+                if st.button(f"✅ Concluir RM {row['numero_rm']}", key=f"btn_{row['id']}"):
                     st.session_state[f'concluir_{row["id"]}'] = True
                 if st.session_state.get(f'concluir_{row["id"]}'):
                     with st.form(f"form_{row['id']}"):
@@ -89,7 +107,7 @@ with tabs[1]:
             else:
                 st.write("Apenas Administradores podem alterar o status.")
 
-# --- ABA 3: NOVA RM (Apenas Admin) ---
+# --- ABA 3: NOVA RM ---
 if es_admin:
     with tabs[2]:
         with st.form("form_cadastro", clear_on_submit=True):
