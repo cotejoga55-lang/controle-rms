@@ -18,7 +18,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 CREDENCIAIS = {
 
-    "Admin": {"usuario": "admin", "senha": "12345"},
+    "Admin": {"usuario": "pdc", "senha": "123"},
 
     "Visitante": {"usuario": "visitante", "senha": "123"}
 
