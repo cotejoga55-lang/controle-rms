@@ -1,10 +1,13 @@
 import streamlit as st
 
 # =====================================================================
-# CONFIGURAÇÃO E CSS FINAL (LAYOUT COMPACTO E CENTRALIZADO)
+# CONFIGURAÇÃO DE PÁGINA
 # =====================================================================
-st.set_page_config(page_title="Controle de RMs", layout="wide")
+st.set_page_config(page_title="Controle de RMs", layout="centered")
 
+# =====================================================================
+# CSS CUSTOMIZADO PARA O VISUAL COMPACTO
+# =====================================================================
 st.markdown("""
 <style>
     /* Fundo da página */
@@ -12,31 +15,32 @@ st.markdown("""
         background-color: #1a1a1a;
     }
 
-    /* O Card de Login (A janela branca) */
+    /* Estilo do Card (A "Janela Flutuante") */
     .login-box {
         background-color: #ffffff;
         padding: 40px;
-        border-radius: 8px;
-        width: 400px; /* Largura fixa para manter o visual compacto */
-        margin: 50px auto; /* Centraliza a caixa na tela */
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        width: 100%;
+        max-width: 400px; /* Define a largura máxima da janela */
+        margin: 50px auto; /* Centraliza a janela na página */
     }
 
-    /* Título do Card */
+    /* Estilo do Título dentro da caixa */
     .login-title {
         color: #2e7bb0;
         text-align: center;
-        font-size: 24px;
+        font-size: 22px;
         font-weight: bold;
         margin-bottom: 25px;
     }
 
-    /* Ajuste para inputs: garante que não se expandam além do container */
+    /* Força os inputs a respeitarem a largura do card */
     .stTextInput > div > div > input {
         width: 100% !important;
     }
 
-    /* Botão Azul */
+    /* Botão Azul Estilizado */
     div.stButton > button {
         width: 100% !important;
         background-color: #2e7bb0 !important;
@@ -51,13 +55,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# LÓGICA DE LOGIN
+# LÓGICA DE LOGIN (SESSION STATE)
 # =====================================================================
 if 'logado' not in st.session_state:
     st.session_state['logado'] = False
 
+# Se NÃO estiver logado, exibe o formulário centralizado
 if not st.session_state['logado']:
-    # Usamos st.columns para garantir o posicionamento centralizado
+    # Usamos colunas vazias para centralizar o bloco da login-box
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
@@ -68,17 +73,20 @@ if not st.session_state['logado']:
         senha = st.text_input("Senha", type="password")
         
         if st.button("Fazer Login"):
+            # Lógica de validação simples
             if usuario == "admin" and senha == "12345":
                 st.session_state['logado'] = True
                 st.rerun()
             else:
-                st.error("Usuário ou senha incorretos.")
+                st.error("Email ou senha incorretos.")
         
         st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Impede que o restante do app seja renderizado antes do login
     st.stop()
 
 # =====================================================================
-# CONTEÚDO PÓS-LOGIN
+# CONTEÚDO PÓS-LOGIN (Área Logada)
 # =====================================================================
 st.title("📦 Sistema de Controle de RMs")
 if st.sidebar.button("Sair"):
