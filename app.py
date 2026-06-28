@@ -5,7 +5,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # =====================================================================
-# CONFIGURAÇÕES E LOGIN
+# CONFIGURAÇÕES E CONEXÃO
 # =====================================================================
 CREDENCIAIS = {
     "Admin": {"usuario": "admin", "senha": "12345"},
@@ -18,6 +18,14 @@ def conectar_banco():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
+# Função para forçar atualização
+def recarregar_dados():
+    st.cache_data.clear()
+    st.rerun()
+
+# =====================================================================
+# INTERFACE E LOGIN
+# =====================================================================
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
@@ -38,7 +46,7 @@ if st.session_state['perfil_logado'] is None:
     st.stop()
 
 # =====================================================================
-# INTERFACE PRINCIPAL
+# LÓGICA E ABAS
 # =====================================================================
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
@@ -51,7 +59,6 @@ with st.sidebar:
         st.rerun()
 
 st.title("📦 Sistema de Controle de RMs")
-
 tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
 
 # --- ABA 1: DASHBOARD ---
@@ -78,7 +85,7 @@ with tabs[1]:
                             agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             cell = sheet.find(str(row['id']), in_column=1)
                             sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
-                            st.rerun()
+                            recarregar_dados()
             else:
                 st.write("Apenas Administradores podem alterar o status.")
 
@@ -92,6 +99,7 @@ if es_admin:
                 novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
                 sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
                 st.success("Cadastrado!")
+                recarregar_dados()
 
 # --- ABA FINAL: HISTÓRICO ---
 with tabs[-1]:
