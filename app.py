@@ -54,44 +54,51 @@ def recarregar_dados():
 
 # =====================================================================
 
+import streamlit as st
+import pandas as pd
+# ... (seus outros imports)
+
+# 1. Configuração da página
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
+# 2. Inicialização do estado
+if 'perfil_logado' not in st.session_state: 
+    st.session_state['perfil_logado'] = None
 
-
-if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
-
-
-
+# 3. Lógica de Login (Isolada)
 if st.session_state['perfil_logado'] is None:
+    col1, col_meio, col3 = st.columns([2, 1, 2])
+    
+    with col_meio:
+        with st.container(border=True):
+            st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_allow_html=True)
+            with st.form("login_form"):
+                usuario = st.text_input("Usuário:")
+                senha = st.text_input("Senha:", type="password")
+                entrar = st.form_submit_button("Entrar", use_container_width=True)
+                
+                if entrar:
+                    if usuario == "admin" and senha == "12345":
+                        st.session_state['perfil_logado'] = "Admin"
+                        st.rerun()
+                    elif usuario == "visitante" and senha == "123":
+                        st.session_state['perfil_logado'] = "Visitante"
+                        st.rerun()
+                    else:
+                        st.error("Usuário ou senha inválidos.")
+            st.caption("Visitante: visitante / 123")
+    
+    st.stop() # Bloqueia TUDO o que vier abaixo se não estiver logado
 
-    st.title("🔑 Login - Sistema de Controle de RMs")
+# 4. SISTEMA LOGADO 
+# O código abaixo SÓ É LIDO se o usuário estiver logado
+st.sidebar.title("Configurações")
+if st.sidebar.button("🚪 Sair"):
+    st.session_state['perfil_logado'] = None
+    st.rerun()
 
-    usuario = st.text_input("Usuário:")
-
-    senha = st.text_input("Senha:", type="password")
-
-    if st.button("Entrar"):
-
-        if usuario == CREDENCIAIS["Admin"]["usuario"] and senha == CREDENCIAIS["Admin"]["senha"]:
-
-            st.session_state['perfil_logado'] = "Admin"
-
-            st.rerun()
-
-        elif usuario == CREDENCIAIS["Visitante"]["usuario"] and senha == CREDENCIAIS["Visitante"]["senha"]:
-
-            st.session_state['perfil_logado'] = "Visitante"
-
-            st.rerun()
-
-        else: st.error("Usuário ou senha inválidos.")
-
-    st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
-
-    st.stop()
-
-
-
+# Agora o título só aparece uma vez, aqui dentro
+st.title("📦 Sistema de Controle de RMs")
 # =====================================================================
 
 # LÓGICA E ABAS
