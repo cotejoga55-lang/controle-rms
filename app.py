@@ -1,52 +1,67 @@
 import streamlit as st
 
-# Configuração de Layout
+# 1. CONFIGURAÇÃO E CSS (Oculta o que não deve aparecer na tela de login)
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# CSS para forçar a centralização e o tamanho fixo
 st.markdown("""
 <style>
-    .block-container { padding-top: 2rem !important; }
-    .stApp { background-color: #1a1a1a; }
-    .login-wrapper { display: flex; justify-content: center; align-items: center; height: 80vh; }
-    .login-card { background-color: #ffffff; padding: 40px; border-radius: 8px; width: 380px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
+    /* Esconde elementos do Streamlit para manter o design limpo */
+    #MainMenu, header, footer {visibility: hidden;}
+    .stApp {background-color: #1a1a1a;}
+    
+    /* Centralizador da caixa de login */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 80vh;
+    }
+    .login-box {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        width: 350px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Lógica de Login
-if 'logado' not in st.session_state: st.session_state['logado'] = False
+# 2. LÓGICA DE ESTADO (Login)
+if 'logado' not in st.session_state:
+    st.session_state['logado'] = False
 
-# --- TELA DE LOGIN ---
+# 3. TELA DE LOGIN (Mostra apenas se NÃO estiver logado)
 if not st.session_state['logado']:
-    st.markdown('<div class="login-wrapper"><div class="login-card">', unsafe_allow_html=True)
-    st.markdown("<h2 style='color:#007bff;'>FAZER LOGIN DA CONTA</h2>", unsafe_allow_html=True)
+    st.markdown('<div class="login-container"><div class="login-box">', unsafe_allow_html=True)
+    st.markdown("### FAZER LOGIN DA CONTA")
     
-    user = st.text_input("Email")
-    pw = st.text_input("Senha", type="password")
+    usuario = st.text_input("Email")
+    senha = st.text_input("Senha", type="password")
     
     if st.button("Fazer Login"):
-        if user == "admin" and pw == "12345":
+        if usuario == "admin" and senha == "12345":
             st.session_state['logado'] = True
-            st.rerun() # Recarrega para mostrar a tela logada
+            st.rerun()
         else:
-            st.error("Credenciais inválidas")
+            st.error("Dados incorretos!")
             
     st.markdown('</div></div>', unsafe_allow_html=True)
-    st.stop() # PARA TUDO AQUI
+    st.stop() # PARA A EXECUÇÃO AQUI, O RESTO NÃO APARECE
 
-# --- TELA LOGADA (O QUE APARECE DEPOIS) ---
-# A partir daqui, o código só roda se logado for True
+# 4. ÁREA LOGADA (Só aparece se o Login for validado)
 st.title("📦 Sistema de Controle de RMs")
-st.sidebar.success("Bem-vindo!")
 
-# Exemplo de conteúdo logado
-tab1, tab2 = st.tabs(["Painel Principal", "Configurações"])
+# Exemplo de como organizar seu conteúdo aqui
+abas = st.tabs(["Dashboard", "Painel de RMs", "Configurações"])
 
-with tab1:
-    st.write("Aqui você pode gerenciar suas RMs.")
-    # Coloque suas tabelas e lógica de banco de dados aqui
-    st.table({"RM": [101, 102], "Status": ["Pendente", "Aprovado"]})
+with abas[0]:
+    st.subheader("Visão Geral")
+    st.write("Seu painel administrativo vai aqui.")
 
+with abas[1]:
+    st.subheader("Gerenciamento de RMs")
+    # Sua lógica de tabelas, banco de dados, etc...
+    
 if st.sidebar.button("Sair"):
     st.session_state['logado'] = False
     st.rerun()
