@@ -54,42 +54,52 @@ def recarregar_dados():
 
 # =====================================================================
 
+import streamlit as st
+import pandas as pd
+# ... (seus outros imports)
+
+# 1. Configuração da página (deve ser a primeira coisa)
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
+# 2. Inicialização do estado
+if 'perfil_logado' not in st.session_state: 
+    st.session_state['perfil_logado'] = None
 
-
-if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
-
-
-
+# 3. Lógica de Login (Isolada)
 if st.session_state['perfil_logado'] is None:
-
-    st.title("🔑 Login - Sistema de Controle de RMs")
-
-    usuario = st.text_input("Usuário:")
-
-    senha = st.text_input("Senha:", type="password")
-
-    if st.button("Entrar"):
-
-        if usuario == CREDENCIAIS["Admin"]["usuario"] and senha == CREDENCIAIS["Admin"]["senha"]:
-
-            st.session_state['perfil_logado'] = "Admin"
-
-            st.rerun()
-
-        elif usuario == CREDENCIAIS["Visitante"]["usuario"] and senha == CREDENCIAIS["Visitante"]["senha"]:
-
-            st.session_state['perfil_logado'] = "Visitante"
-
-            st.rerun()
-
-        else: st.error("Usuário ou senha inválidos.")
-
-    st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
-
+    # Cria colunas para centralizar o login na tela
+    col1, col_meio, col3 = st.columns([1, 1, 1])
+    
+    with col_meio:
+        st.subheader("🔑 Acesso ao Sistema")
+        usuario = st.text_input("Usuário:")
+        senha = st.text_input("Senha:", type="password")
+        
+        if st.button("Entrar"):
+            # Lógica simples de validação
+            if usuario == "admin" and senha == "12345":
+                st.session_state['perfil_logado'] = "Admin"
+                st.rerun()
+            elif usuario == "visitante" and senha == "123":
+                st.session_state['perfil_logado'] = "Visitante"
+                st.rerun()
+            else:
+                st.error("Usuário ou senha inválidos.")
+        
+        st.info("Visitante: visitante / 123")
+    
+    # O st.stop() para a execução aqui. 
+    # O sistema abaixo nunca será renderizado enquanto perfil_logado for None.
     st.stop()
 
+# 4. SISTEMA LOGADO (Só é lido se o código passar do st.stop acima)
+st.sidebar.title("Configurações")
+if st.sidebar.button("🚪 Sair"):
+    st.session_state['perfil_logado'] = None
+    st.rerun()
+
+st.title("📦 Sistema de Controle de RMs")
+# Aqui entram suas tabs e o restante da sua lógica
 
 
 # =====================================================================
