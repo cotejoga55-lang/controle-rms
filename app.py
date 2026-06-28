@@ -203,10 +203,6 @@ if es_admin:
 
 
 # --- ABA FINAL: HISTÓRICO ---
-
-with tabs[-1]:
-
-    st.dataframe(df, use_container_width=True)
 # --- ABA: CONSULTA RÁPIDA ---
 # Adicione "🔍 Consulta" à lista de abas no topo se necessário
 with tabs[3]: # Ajuste o índice se você adicionou novas abas
@@ -233,3 +229,13 @@ with tabs[3]: # Ajuste o índice se você adicionou novas abas
                     st.warning("⚠️ RM ainda em aberto.")
         else:
             st.error("RM não encontrada.")
+
+
+
+
+
+
+with tabs[-1]:
+
+    st.dataframe(df, use_container_width=True)
+
