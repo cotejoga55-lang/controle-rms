@@ -12,8 +12,18 @@ st.set_page_config(page_title="Controle de RMs", layout="wide")
 def aplicar_estilo():
     st.markdown("""
     <style>
-        .stApp { background-color: #121212; color: #FFFFFF; }
-        h1, h2, h3, .stMetric, .stDataFrame { text-align: center !important; }
+        /* Fundo Preto e Texto Branco */
+        .stApp { background-color: #121212; color: #FFFFFF !important; }
+        
+        /* Forçar todos os textos a serem brancos */
+        h1, h2, h3, h4, h5, h6, p, div, span, label { 
+            color: #FFFFFF !important; 
+            text-align: center !important; 
+        }
+        
+        /* Ajuste das tabelas e inputs */
+        .stDataFrame { color: #FFFFFF !important; }
+        
         .metric-card {
             background-color: #1e1e1e;
             padding: 20px;
