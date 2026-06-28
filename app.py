@@ -4,67 +4,118 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# 1. CONFIGURAÇÕES INICIAIS
+# =====================================================================
+# CONFIGURAÇÕES E CONEXÃO
+# =====================================================================
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# 2. LÓGICA DE ESTADO
-if 'logado' not in st.session_state:
-    st.session_state['logado'] = False
-    st.session_state['perfil'] = None
+CREDENCIAIS = {
+    "Admin": {"usuario": "admin", "senha": "12345"},
+    "Visitante": {"usuario": "visitante", "senha": "123"}
+}
 
-# =====================================================================
-# BLOCO 1: TELA DE LOGIN
-# =====================================================================
-if not st.session_state['logado']:
-    _, col_centro, _ = st.columns([1, 2, 1])
-    with col_centro:
-        st.markdown("<h2 style='text-align: center;'>Controle de RMs</h2>", unsafe_allow_html=True)
-        with st.form("login_form"):
-            user = st.text_input("Usuário")
-            pw = st.text_input("Senha", type="password")
-            if st.form_submit_button("Fazer Login"):
-                if (user == "admin" and pw == "12345"):
-                    st.session_state['logado'] = True
-                    st.session_state['perfil'] = "Admin"
-                    st.rerun()
-                elif (user == "visitante" and pw == "123"):
-                    st.session_state['logado'] = True
-                    st.session_state['perfil'] = "Visitante"
-                    st.rerun()
-                else:
-                    st.error("Usuário ou senha inválidos")
-    
-    # IMPORTANTE: st.stop() aqui garante que NADA abaixo seja lido
-    st.stop() 
-
-# =====================================================================
-# BLOCO 2: ÁREA LOGADA (Só é lido se o código passar do st.stop() acima)
-# =====================================================================
-
-# FUNÇÕES DE BANCO (Só rodam depois de logar)
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
-# CARREGA DADOS APENAS APÓS O LOGIN
+def recarregar_dados():
+    st.cache_data.clear()
+    st.rerun()
+
+# =====================================================================
+# LÓGICA DE ESTADO
+# =====================================================================
+if 'perfil_logado' not in st.session_state: 
+    st.session_state['perfil_logado'] = None
+
+# =====================================================================
+# INTERFACE DE LOGIN (CENTRALIZADA E ISOLADA)
+# =====================================================================
+if st.session_state['perfil_logado'] is None:
+    # Usamos colunas para centralizar o formulário sem CSS complexo
+    _, col_centro, _ = st.columns([1, 2, 1])
+    
+    with col_centro:
+        st.markdown("<h2 style='text-align: center;'>🔑 Login - Controle de RMs</h2>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            usuario = st.text_input("Usuário:")
+            senha = st.text_input("Senha:", type="password")
+            entrar = st.form_submit_button("Entrar")
+            
+            if entrar:
+                if usuario == CREDENCIAIS["Admin"]["usuario"] and senha == CREDENCIAIS["Admin"]["senha"]:
+                    st.session_state['perfil_logado'] = "Admin"
+                    st.rerun()
+                elif usuario == CREDENCIAIS["Visitante"]["usuario"] and senha == CREDENCIAIS["Visitante"]["senha"]:
+                    st.session_state['perfil_logado'] = "Visitante"
+                    st.rerun()
+                else: 
+                    st.error("Usuário ou senha inválidos.")
+        st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
+    
+    # O st.stop() aqui é o que impede que o restante do código seja renderizado
+    st.stop() 
+
+# =====================================================================
+# SISTEMA (SÓ RODA SE O LOGIN TIVER PASSADO)
+# =====================================================================
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
-es_admin = (st.session_state['perfil'] == "Admin")
-
-# INTERFACE LOGADA
-st.title("📦 Sistema de Controle de RMs")
+es_admin = (st.session_state['perfil_logado'] == "Admin")
 
 with st.sidebar:
-    st.write(f"👤 Perfil: **{st.session_state['perfil']}**")
+    st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
     if st.button("🚪 Sair"):
-        st.session_state['logado'] = False
+        st.session_state['perfil_logado'] = None
         st.rerun()
+
+# O Título só aparece aqui, uma única vez, dentro do bloco logado
+st.title("📦 Sistema de Controle de RMs")
 
 tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
 
-# --- (O RESTO DO SEU CÓDIGO DE ABAS VAI AQUI) ---
+# --- ABA 1: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
-    # ... resto do código ...
+    col1, col2, col3 = st.columns(3)
+    col1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
+    col2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
+    col3.metric("Total de RMs", len(df))
+
+# --- ABA 2: PAINEL ---
+with tabs[1]:
+    st.subheader("Gestão de RMs em Aberto")
+    abertas = df[df['status'] == 'Aberta']
+    for _, row in abertas.iterrows():
+        with st.expander(f"RM: {row['numero_rm']} - Solicitante: {row['solicitante']}"):
+            if es_admin:
+                if st.button(f"✅ Marcar como Concluída", key=f"btn_{row['id']}"):
+                    st.session_state[f'concluir_{row["id"]}'] = True
+                if st.session_state.get(f'concluir_{row["id"]}'):
+                    with st.form(f"form_{row['id']}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.form_submit_button("Confirmar"):
+                            agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cell = sheet.find(str(row['id']), in_column=1)
+                            sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
+                            recarregar_dados()
+            else:
+                st.write("Apenas Administradores podem alterar o status.")
+
+# --- ABA 3: NOVA RM ---
+if es_admin:
+    with tabs[2]:
+        with st.form("form_cadastro", clear_on_submit=True):
+            num = st.text_input("Número da RM")
+            sol = st.text_input("Solicitante")
+            if st.form_submit_button("Cadastrar"):
+                novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
+                sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                st.success("Cadastrado!")
+                recarregar_dados()
+
+# --- ABA FINAL: HISTÓRICO ---
+with tabs[-1]:
+    st.dataframe(df, use_container_width=True)
