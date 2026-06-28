@@ -78,7 +78,7 @@ if st.session_state['perfil_logado'] is None:
                 entrar = st.form_submit_button("Entrar", use_container_width=True)
                 
                 if entrar:
-                    if usuario == "admin" and senha == "12345":
+                    if usuario == "pdc" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"
                         st.rerun()
                     elif usuario == "visitante" and senha == "123":
