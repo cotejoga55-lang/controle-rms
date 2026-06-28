@@ -49,4 +49,49 @@ if st.session_state['perfil_logado'] is None:
                 st.session_state['perfil_logado'] = "Visitante"; st.rerun()
             else: st.error("Usuário ou senha inválidos.")
     st.info("Login Visitante: visitante / 123"); st.stop()
+    sheet = conectar_banco()
+df = pd.DataFrame(sheet.get_all_records())
+es_admin = (st.session_state['perfil_logado'] == "Admin")
+
+with st.sidebar:
+    st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
+    if st.button("🚪 Sair"): st.session_state['perfil_logado'] = None; st.rerun()
+
+st.title("📦 Sistema de Controle de RMs")
+tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
+
+with tabs[0]:
+    st.subheader("Resumo Operacional")
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f'<div class="metric-card"><h3>RMs Abertas</h3><h1>{len(df[df["status"] == "Aberta"])}</h1></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="metric-card"><h3>RMs Concluídas</h3><h1>{len(df[df["status"] == "Concluída"])}</h1></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="metric-card"><h3>Total de RMs</h3><h1>{len(df)}</h1></div>', unsafe_allow_html=True)
+
+with tabs[1]:
+    st.subheader("Gestão de RMs")
+    for _, row in df[df['status'] == 'Aberta'].iterrows():
+        id_rm = str(row['id'])
+        with st.expander(f"RM: {row['numero_rm']} | Solicitante: {row['solicitante']}"):
+            if es_admin:
+                if st.button(f"✅ Concluir RM {id_rm}", key=f"btn_{id_rm}"): st.session_state[f'concluir_{id_rm}'] = True
+                if st.session_state.get(f'concluir_{id_rm}'):
+                    with st.form(f"f_{id_rm}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.form_submit_button("Confirmar Retirada"):
+                            agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cell = sheet.find(id_rm, in_column=1)
+                            sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
+                            recarregar_dados()
+            else: st.write("Apenas Administradores podem concluir.")
+
+if es_admin:
+    with tabs[2]:
+        with st.form("cad", clear_on_submit=True):
+            n, s = st.text_input("Número da RM"), st.text_input("Solicitante")
+            if st.form_submit_button("Cadastrar"):
+                novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
+                sheet.append_row([novo_id, n, s, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                recarregar_dados()
+
+with tabs[-1]: st.dataframe(df, use_container_width=True)
     
