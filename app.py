@@ -11,15 +11,14 @@ st.markdown("""
 <style>
     .stApp { background-color: #121212; color: #FFFFFF !important; }
     h1, h2, h3, h4, label, p { color: #FFFFFF !important; text-align: center !important; }
-    .stTextInput > div > div > input { max-width: 400px; margin-left: auto; margin-right: auto; display: block; }
+    /* Estilo do container de login */
+    .login-box { background-color: #1e1e1e; padding: 30px; border-radius: 20px; border: 1px solid #333; }
+    /* Botão flutuante estilo janela */
     div.stButton > button { 
-        width: 200px !important; margin: 0 auto !important; display: block !important;
-        background-color: #000000 !important; color: #FFFFFF !important;
-        font-weight: bold !important; border: 2px solid #ffffff !important;
+        width: 100% !important; background-color: #222 !important; color: #fff !important;
+        border: 2px solid #fff !important; border-radius: 10px !important; font-weight: bold !important;
+        height: 50px !important; margin-top: 20px !important;
     }
-    .metric-card { background-color: #1e1e1e; padding: 20px; border-radius: 15px; text-align: center; border: 1px solid #333; transition: 0.3s; margin: 10px; }
-    .metric-card:hover { background-color: #333; transform: scale(1.03); }
-    .stDataFrame { color: #FFFFFF !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -34,26 +33,33 @@ def recarregar_dados():
     st.rerun()
 
 # --- LÓGICA DE LOGIN ---
-if 'perfil_logado' not in st.session_state:
-    st.session_state['perfil_logado'] = None
+if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
 
 if st.session_state['perfil_logado'] is None:
-    st.title("🔑 Login - Controle de RMs")
-    usuario = st.text_input("Usuário:")
-    senha = st.text_input("Senha:", type="password")
+    st.title("🔑 Acesso ao Sistema")
+    # Colunas para o layout: Esquerda (Texto/Info) | Direita (Login)
+    c_esq, c_dir = st.columns([1, 1])
     
-    if st.button("ENTRAR"):
-        if usuario == "admin" and senha == "12345":
-            st.session_state['perfil_logado'] = "Admin"
-            st.rerun()
-        elif usuario == "visitante" and senha == "123":
-            st.session_state['perfil_logado'] = "Visitante"
-            st.rerun()
-        else:
-            st.error("Usuário ou senha inválidos.")
+    with c_esq:
+        st.markdown("<br><br><h3>Bem-vindo ao Sistema</h3><p>Utilize suas credenciais para acessar o painel de controle de RMs.</p>", unsafe_allow_html=True)
+    
+    with c_dir:
+        st.markdown('<div class="login-box">', unsafe_allow_html=True)
+        usuario = st.text_input("USUÁRIO:")
+        senha = st.text_input("SENHA:", type="password")
+        if st.button("ENTRAR"):
+            if usuario == "admin" and senha == "12345":
+                st.session_state['perfil_logado'] = "Admin"
+                st.rerun()
+            elif usuario == "visitante" and senha == "123":
+                st.session_state['perfil_logado'] = "Visitante"
+                st.rerun()
+            else:
+                st.error("Usuário ou senha incorretos.")
+        st.markdown('</div>', unsafe_allow_html=True)
     st.stop()
 
-# --- LÓGICA PRINCIPAL (APÓS LOGIN) ---
+# --- ÁREA LOGADA ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
@@ -81,8 +87,7 @@ with tabs[1]:
                     cell = sheet.find(id_rm, in_column=1)
                     sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, "Admin", "Concluída"]])
                     recarregar_dados()
-            else: 
-                st.write("Apenas Administradores podem concluir.")
+            else: st.write("Acesso restrito.")
 
 if es_admin:
     with tabs[2]:
@@ -93,5 +98,4 @@ if es_admin:
                 sheet.append_row([novo_id, n, s, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
                 recarregar_dados()
 
-with tabs[-1]: 
-    st.dataframe(df, use_container_width=True)
+with tabs[-1]: st.dataframe(df, use_container_width=True)
