@@ -5,38 +5,35 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # =====================================================================
-# CONFIGURAÇÕES E ESTILO
+# CONFIGURAÇÕES E CSS (Fundo escuro no login, alta legibilidade no sistema)
 # =====================================================================
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 st.markdown("""
 <style>
-    /* Fundo neutro e profissional */
-    .stApp { background-color: #f0f2f6; }
+    /* Fundo Escuro para o Login */
+    .stApp { background-color: #1a1a1a; }
     
-    /* Centralizador do Login */
+    /* Login */
     .login-wrapper { display: flex; justify-content: center; align-items: center; height: 80vh; }
-    
-    /* Card de Login */
     .login-card { 
-        background-color: #ffffff; 
-        padding: 40px; 
-        border-radius: 12px; 
-        width: 400px; 
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
-        text-align: center;
-        border: 1px solid #e0e0e0;
+        background-color: #ffffff; padding: 40px; border-radius: 8px; width: 380px; 
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center;
     }
     
-    /* Textos legíveis */
-    h2 { color: #333333 !important; }
-    .stTextInput input { border: 1px solid #cccccc !important; border-radius: 5px !important; }
-    div.stButton > button { background-color: #007bff !important; color: white !important; border: none !important; width: 100% !important; }
+    /* Garantir que textos do sistema logado fiquem brancos contra o fundo escuro */
+    h1, h2, h3, p, div { color: #ffffff !important; }
+    
+    /* Ajuste de cor para elementos de input do Streamlit */
+    .stTextInput > div > div > input { color: #000000 !important; }
+    
+    /* Tabelas e métricas com fundo escuro e texto branco */
+    .stDataFrame, .stTable { background-color: #262730 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# LÓGICA E CONEXÕES
+# LÓGICA E CONEXÃO
 # =====================================================================
 CREDENCIAIS = {
     "Admin": {"usuario": "admin", "senha": "12345"},
@@ -56,11 +53,11 @@ def recarregar_dados():
 if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
 
 # =====================================================================
-# INTERFACE DE LOGIN
+# TELA DE LOGIN (ORIGINAL)
 # =====================================================================
 if st.session_state['perfil_logado'] is None:
     st.markdown('<div class="login-wrapper"><div class="login-card">', unsafe_allow_html=True)
-    st.markdown("<h2>🔑 Login - Controle de RMs</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#007bff !important;'>FAZER LOGIN</h2>", unsafe_allow_html=True)
     with st.form("login_form"):
         usuario = st.text_input("Usuário:")
         senha = st.text_input("Senha:", type="password")
@@ -72,12 +69,11 @@ if st.session_state['perfil_logado'] is None:
                 st.session_state['perfil_logado'] = "Visitante"
                 st.rerun()
             else: st.error("Usuário ou senha inválidos.")
-    st.info("OBS: Login para Visitante: usuário 'visitante' / senha '123'")
     st.markdown('</div></div>', unsafe_allow_html=True)
     st.stop()
 
 # =====================================================================
-# SISTEMA LOGADO
+# SISTEMA (VISIBILIDADE AJUSTADA)
 # =====================================================================
 sheet = conectar_banco()
 dados = sheet.get_all_records()
