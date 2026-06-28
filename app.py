@@ -11,7 +11,6 @@ st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 st.markdown("""
 <style>
-    /* Estilo do Card Flutuante */
     .login-card {
         background-color: #ffffff;
         padding: 30px;
@@ -21,11 +20,9 @@ st.markdown("""
         margin: 50px auto;
         color: #333;
     }
-    /* Limita a largura dos campos (aprox. 13 dígitos) */
     .stTextInput > div > div > input {
         max-width: 200px !important;
     }
-    /* Estilo do Botão */
     div.stButton > button {
         width: 100% !important;
         background-color: #007bff !important;
@@ -74,4 +71,62 @@ if st.session_state['perfil_logado'] is None:
         else:
             st.error("Usuário ou senha inválidos.")
             
-    st.markdown("
+    # Aqui usei aspas triplas para evitar o erro de sintaxe
+    st.markdown("""
+    <p style='font-size: 12px; color: #666; margin-top: 15px;'>
+    <b>OBS para visitantes:</b><br>Login: visitante<br>Senha: 123
+    </p>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
+
+# =====================================================================
+# ÁREA LOGADA
+# =====================================================================
+sheet = conectar_banco()
+df = pd.DataFrame(sheet.get_all_records())
+es_admin = (st.session_state['perfil_logado'] == "Admin")
+
+if st.sidebar.button("🚪 Sair"):
+    st.session_state['perfil_logado'] = None
+    st.rerun()
+
+st.title("📦 Sistema de Controle de RMs")
+tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
+
+with tabs[0]:
+    st.subheader("Resumo Operacional")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
+    c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
+    c3.metric("Total de RMs", len(df))
+
+with tabs[1]:
+    st.subheader("Gestão de RMs")
+    for _, row in df[df['status'] == 'Aberta'].iterrows():
+        with st.expander(f"RM: {row['numero_rm']} - Solicitante: {row['solicitante']}"):
+            if es_admin:
+                if st.button(f"✅ Concluir", key=f"btn_{row['id']}"):
+                    st.session_state[f'concluir_{row["id"]}'] = True
+                if st.session_state.get(f'concluir_{row["id"]}'):
+                    with st.form(f"form_{row['id']}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.form_submit_button("Confirmar"):
+                            agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cell = sheet.find(str(row['id']), in_column=1)
+                            sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
+                            recarregar_dados()
+            else: st.write("Acesso restrito.")
+
+if es_admin:
+    with tabs[2]:
+        with st.form("cad", clear_on_submit=True):
+            n = st.text_input("Número da RM")
+            s = st.text_input("Solicitante")
+            if st.form_submit_button("Cadastrar"):
+                novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
+                sheet.append_row([novo_id, n, s, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                recarregar_dados()
+
+with tabs[-1]: st.dataframe(df, use_container_width=True)
