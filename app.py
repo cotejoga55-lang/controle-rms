@@ -103,4 +103,4 @@ if es_admin:
 
 # --- ABA FINAL: HISTÓRICO ---
 with tabs[-1]:
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True).
