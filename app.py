@@ -124,17 +124,34 @@ tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico
 
 # --- ABA 1: DASHBOARD ---
 
+# --- ABA 1: DASHBOARD ---
 with tabs[0]:
-
     st.subheader("Resumo Operacional")
-
+    
+    # Suas métricas atuais
     col1, col2, col3 = st.columns(3)
-
     col1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
-
     col2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
-
     col3.metric("Total de RMs", len(df))
+    
+    st.divider() # Uma linha horizontal para separar as métricas do gráfico
+    
+    # --- NOVO BLOCO DO GRÁFICO ---
+    st.subheader("Produtividade Mensal")
+    
+    df_concluidas = df[df['status'] == 'Concluída'].copy()
+    
+    if not df_concluidas.empty:
+        # Tenta converter a coluna para data. Se falhar, avisa que a data está em formato inválido
+        try:
+            df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'])
+            df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M').astype(str)
+            dados_mensais = df_concluidas.groupby('mes').size()
+            st.bar_chart(dados_mensais)
+        except Exception as e:
+            st.warning("Formato de data inválido. Certifique-se que a coluna 'data_retirada' está como data.")
+    else:
+        st.info("Nenhuma RM concluída ainda para gerar o gráfico.")
 
 
 
