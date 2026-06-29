@@ -200,15 +200,22 @@ if es_admin:
 
                 recarregar_dados()
 
-
 # --- ABA: CONSULTA RÁPIDA ---
-# (Certifique-se de que a aba existe na sua lista: tabs = st.tabs([...]))
+# (Certifique-se de que a aba existe na sua lista de tabs)
 with tabs[3]: 
     st.subheader("🔍 Consultar Status de RM")
-    busca_rm = st.text_input("Digite o número da RM para consultar:")
     
-    if busca_rm:
-        # Converter coluna numero_rm para string e tirar espaços para garantir a comparação
+    # Criamos um layout com input e botão lado a lado
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        busca_rm = st.text_input("Digite o número da RM:", key="input_busca")
+    with c2:
+        st.write("###") # Alinhamento visual
+        btn_pesquisar = st.button("Pesquisar", key="btn_pesquisar_rm")
+    
+    # A pesquisa só acontece se o botão for clicado
+    if btn_pesquisar and busca_rm:
+        # Converter para string e limpar espaços
         df['numero_rm_str'] = df['numero_rm'].astype(str).str.strip()
         busca_rm_str = str(busca_rm).strip()
         
@@ -216,7 +223,6 @@ with tabs[3]:
         
         if not resultado.empty:
             rm = resultado.iloc[0]
-            # Janela flutuante (Popover)
             with st.popover("Ver Detalhes da RM", use_container_width=True):
                 st.markdown(f"### Detalhes RM: {rm['numero_rm']}")
                 st.write(f"**Status:** {rm['status']}")
@@ -231,7 +237,6 @@ with tabs[3]:
                     st.warning("⚠️ RM ainda em aberto.")
         else:
             st.error("RM não encontrada.")
-
 
 # --- ABA FINAL: HISTÓRICO ---
 
