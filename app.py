@@ -201,16 +201,18 @@ if es_admin:
                 recarregar_dados()
 
 
-
-# --- ABA FINAL: HISTÓRICO ---
 # --- ABA: CONSULTA RÁPIDA ---
-# Adicione "🔍 Consulta" à lista de abas no topo se necessário
-with tabs[3]: # Ajuste o índice se você adicionou novas abas
+# (Certifique-se de que a aba existe na sua lista: tabs = st.tabs([...]))
+with tabs[3]: 
     st.subheader("🔍 Consultar Status de RM")
     busca_rm = st.text_input("Digite o número da RM para consultar:")
     
     if busca_rm:
-        resultado = df[df['numero_rm'] == busca_rm]
+        # Converter coluna numero_rm para string e tirar espaços para garantir a comparação
+        df['numero_rm_str'] = df['numero_rm'].astype(str).str.strip()
+        busca_rm_str = str(busca_rm).strip()
+        
+        resultado = df[df['numero_rm_str'] == busca_rm_str]
         
         if not resultado.empty:
             rm = resultado.iloc[0]
@@ -231,8 +233,7 @@ with tabs[3]: # Ajuste o índice se você adicionou novas abas
             st.error("RM não encontrada.")
 
 
-
-
+# --- ABA FINAL: HISTÓRICO ---
 
 
 with tabs[-1]:
