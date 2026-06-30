@@ -140,8 +140,11 @@ with tabs[idx_historico]:
     st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
     col_esq, col_centro, col_dir = st.columns([1, 8, 1])
     with col_centro:
-        # Tabela centralizada via HTML para garantir alinhamento
-        tabela_html = df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].to_html(classes="table table-striped", index=False, justify="center")
+        # Prepara o dataframe substituindo vazios por "Pendente"
+        df_hist = df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].copy()
+        df_hist[['data_retirada', 'quem_retirou']] = df_hist[['data_retirada', 'quem_retirou']].fillna("Pendente")
+        
+        tabela_html = df_hist.to_html(classes="table table-striped", index=False, justify="center")
         st.markdown(f"<div style='text-align: center;'>{tabela_html}</div>", unsafe_allow_html=True)
         
         if es_admin:
