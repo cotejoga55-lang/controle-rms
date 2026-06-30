@@ -135,11 +135,14 @@ with tabs[idx_consulta]:
                 else: st.write(f"RM: {rm['numero_rm']} | Status: {rm['status']}")
 
 with tabs[idx_historico]:
-    st.dataframe(df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']], use_container_width=True)
-    if es_admin:
-        with st.form("d"):
-            sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
-            if st.form_submit_button("🗑️ Deletar"):
-                for i, s in sel.items():
-                    if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
-                recarregar_dados()
+    st.subheader("📊 Histórico Completo")
+    col_esq, col_centro, col_dir = st.columns([1, 8, 1])
+    with col_centro:
+        st.dataframe(df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']], use_container_width=True)
+        if es_admin:
+            with st.form("d"):
+                sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
+                if st.form_submit_button("🗑️ Deletar"):
+                    for i, s in sel.items():
+                        if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
+                    recarregar_dados()
