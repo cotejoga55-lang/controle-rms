@@ -74,7 +74,6 @@ def mostrar_conteudo(nome_tab):
         c3.metric("Total", len(df))
         st.divider()
         
-        # Métricas de Prazo (72h) no Dashboard
         df_sep = df[df['status'] == 'Separada'].copy()
         df_sep['data_retirada'] = pd.to_datetime(df_sep['data_retirada'])
         agora = obter_hora_brasil()
