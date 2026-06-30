@@ -135,26 +135,35 @@ with tabs[0]:
     
     st.divider() # Uma linha horizontal para separar as métricas do gráfico
     
-  # --- BLOCO CORRIGIDO DA PRODUTIVIDADE MENSAL ---
+ # --- BLOCO DE PRODUTIVIDADE MENSAL (12 MESES) ---
     st.subheader("Produtividade Mensal")
     
+    # 1. Preparar os dados
     df_concluidas = df[df['status'] == 'Concluída'].copy()
+    df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'], errors='coerce')
+    
+    # 2. Criar uma série de 12 meses do ano atual (2026)
+    meses_ano = pd.period_range(start='2026-01', end='2026-12', freq='M')
     
     if not df_concluidas.empty:
-        try:
-            df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'])
-            df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M').astype(str)
-            dados_mensais = df_concluidas.groupby('mes').size()
-            
-            st.bar_chart(
-                dados_mensais, 
-                use_container_width=True, 
-                color="#007bff"
-            )
-        except Exception:
-            st.warning("Formato de data inválido.") # Corrigido: sem parênteses extras
+        df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M')
+        dados_agrupados = df_concluidas.groupby('mes').size()
     else:
-        st.info("Nenhuma RM concluída ainda para gerar o gráfico.")
+        # Se não houver nada, cria uma série vazia
+        dados_agrupados = pd.Series(0, index=meses_ano)
+
+    # 3. Garantir que todos os 12 meses estejam presentes (preenche com 0 se faltar)
+    dados_finais = dados_agrupados.reindex(meses_ano, fill_value=0)
+    
+    # 4. Formatar o índice para string legível (Jan, Fev...)
+    dados_finais.index = [m.strftime('%b') for m in dados_finais.index]
+
+    # 5. Exibir gráfico
+    st.bar_chart(
+        dados_finais, 
+        use_container_width=True, 
+        color="#007bff"
+    )
 
 
 # --- ABA 2: PAINEL ---
