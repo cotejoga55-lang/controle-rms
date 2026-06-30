@@ -7,13 +7,9 @@ import time
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# Script para forçar recarregamento do navegador a cada 30 segundos
+# Script para recarregar a página a cada 10 segundos de forma silenciosa
 st.markdown("""
-    <script>
-        setTimeout(function(){
-           window.location.reload(1);
-        }, 30000);
-    </script>
+    <meta http-equiv="refresh" content="10">
 """, unsafe_allow_html=True)
 
 def conectar_banco():
@@ -76,8 +72,10 @@ else:
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
-        df_raw = pd.DataFrame(sheet.get_all_records())
-        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
+        # Recarrega dados aqui para garantir que o painel pegue a cobrança do outro celular
+        df_fresh = pd.DataFrame(sheet.get_all_records())
+        cobrancas = df_fresh[df_fresh['cobranca'] == 'COBRADO']
+        
         if not cobrancas.empty:
             with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
                 for _, row in cobrancas.iterrows():
