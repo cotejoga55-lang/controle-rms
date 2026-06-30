@@ -153,7 +153,7 @@ def mostrar_conteudo(nome_tab):
             else: st.warning("RM não encontrada.")
 
     elif nome_tab == "📊 Histórico":
-        st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_align=True)
+        st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
         df_hist = df.copy()
         if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
         st.dataframe(df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna("Pendente"), use_container_width=True)
