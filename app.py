@@ -92,6 +92,34 @@ with tabs[0]:
         st.bar_chart(dados_finais, use_container_width=True, color="#007bff")
 
 # --- ABA 1: PAINEL ---
+import plotly.express as px # Adicione este import no topo do seu código
+
+# ... (dentro da Aba 1, onde você estava montando o gráfico)
+
+    # 5. Exibir gráfico com Plotly (Muito mais elegante)
+    fig = px.bar(
+        dados_finais, 
+        x=dados_finais.index, 
+        y=dados_finais.values,
+        labels={'x': 'Mês', 'y': 'RMs Concluídas'},
+        color_discrete_sequence=['#636EFA'] # Azul moderno
+    )
+    
+    # Ajustes finos para ficar bonito e compacto
+    fig.update_layout(
+        margin=dict(l=20, r=20, t=30, b=20), # Remove espaços desnecessários
+        height=300, # Altura fixa ideal para celular
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    
+    fig.update_xaxes(showgrid=False)
+    fig.update_yaxes(showgrid=True, gridcolor='lightgray')
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
 with tabs[1]:
     st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
