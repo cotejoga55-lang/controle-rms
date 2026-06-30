@@ -135,28 +135,26 @@ with tabs[0]:
     
     st.divider() # Uma linha horizontal para separar as métricas do gráfico
     
-    # --- NOVO BLOCO DO GRÁFICO ---
+  # --- BLOCO CORRIGIDO DA PRODUTIVIDADE MENSAL ---
     st.subheader("Produtividade Mensal")
     
     df_concluidas = df[df['status'] == 'Concluída'].copy()
     
-    if# ... (dentro do if not df_concluidas.empty:)
+    if not df_concluidas.empty:
         try:
             df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'])
             df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M').astype(str)
             dados_mensais = df_concluidas.groupby('mes').size()
             
-            # Gráfico mais polido
             st.bar_chart(
                 dados_mensais, 
-                use_container_width=True, # Faz o gráfico ocupar toda a largura disponível
-                color="#007bff"           # Uma cor mais definida (azul padrão)
+                use_container_width=True, 
+                color="#007bff"
             )
-        except Exception as e:
-            st.warning("Formato de data inválido."))
+        except Exception:
+            st.warning("Formato de data inválido.") # Corrigido: sem parênteses extras
     else:
         st.info("Nenhuma RM concluída ainda para gerar o gráfico.")
-
 
 
 # --- ABA 2: PAINEL ---
