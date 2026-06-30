@@ -159,10 +159,22 @@ with tabs[0]:
     dados_finais.index = [m.strftime('%b') for m in dados_finais.index]
 
     # 5. Exibir gráfico
-    st.bar_chart(
-        dados_finais, 
-        use_container_width=True, 
-        color="#007bff"
+    # --- BLOCO ATUALIZADO (AJUSTE PARA CELULAR) ---
+    st.subheader("Produtividade Mensal")
+    
+    # [O restante do seu código de preparação de dados (meses_ano, dados_finais) continua igual]
+    # ...
+    
+    # 5. Exibir gráfico ajustado
+    # Esta parte vai centralizar e dar o respiro que você precisa
+    col_left, col_mid, col_right = st.columns([1, 8, 1])
+    
+    with col_mid:
+        st.bar_chart(
+            dados_finais, 
+            use_container_width=True, 
+            color="#007bff"
+        )
     )
 
 
