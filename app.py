@@ -144,7 +144,7 @@ def mostrar_conteudo(nome_tab):
                             sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
                             st.rerun()
                     elif rm['status'] == 'Separada':
-                        st.write("🟡 **EM PROCESSO DE SEPARAÇÃO**")
+                        st.write("🟡 **Separada aguardando retirada**")
                     else:
                         st.write(f"Status: **{rm['status']}**")
             else: st.write("RM não encontrada.")
