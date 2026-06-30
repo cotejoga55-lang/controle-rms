@@ -37,6 +37,9 @@ if st.session_state['perfil_logado'] is None:
                     if usuario == "pdc" and senha == "123": st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234": st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
+            # OBSERVAÇÃO DE LOGIN RESTAURADA
+            st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
 sheet = conectar_banco()
@@ -95,7 +98,6 @@ def mostrar_conteudo(nome_tab):
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
                         row_idx = sheet.find(str(row['id']), in_column=1).row
-                        # REGISTRA DATA SAÍDA NA COLUNA E
                         sheet.update_cell(row_idx, 5, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         sheet.update_cell(row_idx, 8, "Separada"); recarregar_dados()
                 with b4:
@@ -107,15 +109,12 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
-            # Lógica do semáforo
             tempo_decorrido = datetime.now() - pd.to_datetime(row['data_saida'])
             is_atrasado = tempo_decorrido > timedelta(hours=72)
-            
             label_semaforo = "🔴 Separada a mais de 72 horas" if is_atrasado else "🟢 Separada recentemente"
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {label_semaforo}"):
                 if is_atrasado: st.error(label_semaforo)
                 else: st.success(label_semaforo)
-                
                 if es_admin:
                     with st.form(key=f"ret_form_{row['id']}"):
                         quem = st.text_input("Quem retirou?", key=f"quem_in_{row['id']}")
