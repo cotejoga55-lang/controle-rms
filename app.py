@@ -54,7 +54,6 @@ with st.sidebar:
 
 st.title("📦 Sistema de Controle de RMs")
 
-# Definição dinâmica das abas
 if es_admin:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
@@ -115,17 +114,20 @@ with tabs[1]:
             else:
                 st.write("Apenas Administradores podem concluir.")
 
-# --- ABA: NOVA RM ---
+# --- ABA: NOVA RM (Com validação de 8 dígitos) ---
 if es_admin:
     with tabs[2]:
         with st.form("form_cadastro", clear_on_submit=True):
-            num = st.text_input("Número da RM")
+            num = st.text_input("Número da RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
-                novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
-                sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
-                st.success("Cadastrado!")
-                recarregar_dados()
+                if len(num) == 8 and num.isdigit():
+                    novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
+                    sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                    st.success("Cadastrado com sucesso!")
+                    recarregar_dados()
+                else:
+                    st.error("Erro: O número da RM deve conter exatamente 8 dígitos numéricos.")
 
 # --- ABA: CONSULTA ---
 with tabs[idx_consulta]:
