@@ -80,9 +80,11 @@ with tabs[0]:
         with st.popover("🔔 NOTIFICAÇÕES PENDENTES"):
             for _, row in cobrancas.iterrows():
                 st.warning(f"O NÚMERO DA RM {row['numero_rm']} FOI COBRADA !")
+                # CORREÇÃO: O botão agora chama a função de limpeza de forma direta e clara
                 if st.button(f"Limpar notificação RM {row['numero_rm']}", key=f"clear_{row['id']}"):
                     cell = sheet.find(str(row['id']), in_column=1)
                     sheet.update_cell(cell.row, 9, "")
+                    st.success("Notificação limpa!")
                     recarregar_dados()
     else:
         st.write("🔔 Sem novas cobranças.")
@@ -152,6 +154,7 @@ with tabs[idx_consulta]:
         else: st.error("RM não encontrada.")
 
 with tabs[idx_historico]:
+    st.subheader("📊 Histórico Completo")
     st.dataframe(df, use_container_width=True)
     if es_admin:
         with st.form("form_deletar"):
