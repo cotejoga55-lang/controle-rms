@@ -60,27 +60,40 @@ else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASHBOARD ---
+# --- ABA 0: DASHBOARD ORIGINAL + SINO ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
-    # Leitura forçada do banco
+    
+    # Sino de Notificação
     df_raw = pd.DataFrame(sheet.get_all_records())
     cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
-    
     if not cobrancas.empty:
         with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
             for _, row in cobrancas.iterrows():
                 st.warning(f"O NÚMERO DA RM {row['numero_rm']} FOI COBRADA !")
                 if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
-                    cell = sheet.find(str(row['id']), in_column=1)
-                    sheet.update_cell(cell.row, 9, "")
+                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
                     st.rerun()
     else: st.write("🔔 Sem novas cobranças.")
-    
+
     c1, c2, c3 = st.columns(3)
     c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
     c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
     c3.metric("Total de RMs", len(df))
+    st.divider()
+    
+    st.subheader("🔎 Relatório por Mês")
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+    meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+    opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
+    mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    if mes_escolhido:
+        partes = mes_escolhido.split(" - ")
+        mes_num = list(nomes_meses.values()).index(partes[0]) + 1
+        ano = int(partes[1])
+        c_r1, c_r2 = st.columns(2)
+        c_r1.metric("Total Separadas", len(df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]))
+        c_r2.metric("Total Retiradas", len(df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]))
 
 # --- ABA 1: PAINEL ---
 with tabs[1]:
@@ -93,7 +106,7 @@ with tabs[1]:
                 sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada")
                 recarregar_dados()
 
-# --- ABA 2 ---
+# --- ABA 2: PEND. RETIRADA ---
 with tabs[2]:
     for _, row in df[df['status'] == 'Separada'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
@@ -130,6 +143,7 @@ with tabs[idx_consulta]:
         else: st.error("RM não encontrada.")
 
 with tabs[idx_historico]:
+    st.subheader("📊 Histórico Completo")
     st.dataframe(df, use_container_width=True)
     if es_admin:
         with st.form("d"):
