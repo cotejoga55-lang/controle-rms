@@ -134,36 +134,39 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "🔍 Consulta":
         st.subheader("🔍 Consultar RM")
         lista_rms = df['numero_rm'].astype(str).tolist()
-        busca = st.selectbox("Digite ou selecione a RM (8 dígitos):", [""] + lista_rms)
-        if busca:
-            res = df[df['numero_rm'].astype(str) == str(busca).strip()]
-            if not res.empty:
-                rm = res.iloc[0]
-                with st.container(border=True):
-                    st.write(f"**RM:** {rm['numero_rm']} | **Solicitante:** {rm['solicitante']}")
-                    if rm['status'] == 'Aberta':
-                        st.write("Status: **Aberta**")
-                        if st.button("🔔 Cobrar", key="c_c"):
-                            sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
-                            st.rerun()
-                    elif rm['status'] == 'Separada':
-                        st.write("Status: 🟡 **Separada aguardando retirada**")
-                    else:
-                        st.write(f"Status: **{rm['status']}**")
-            else: st.warning("RM não encontrada.")
+        busca = st.selectbox("Selecione a RM:", [""] + lista_rms)
+        if st.button("Pesquisar"):
+            if busca:
+                res = df[df['numero_rm'].astype(str) == str(busca).strip()]
+                if not res.empty:
+                    rm = res.iloc[0]
+                    with st.container(border=True):
+                        st.write(f"**RM:** {rm['numero_rm']} | **Solicitante:** {rm['solicitante']}")
+                        if rm['status'] == 'Aberta':
+                            st.write("Status: **Aberta**")
+                            if st.button("🔔 Cobrar", key="c_c"):
+                                sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
+                                st.rerun()
+                        elif rm['status'] == 'Separada':
+                            st.write("Status: 🟡 **Separada aguardando retirada**")
+                        else:
+                            st.write(f"Status: **{rm['status']}**")
+                else: st.warning("RM não encontrada.")
 
     elif nome_tab == "📊 Histórico":
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
-        df_hist = df.copy()
-        if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
-        st.dataframe(df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna("Pendente"), use_container_width=True)
-        if es_admin:
-            with st.form("d"):
-                sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
-                if st.form_submit_button("🗑️ Deletar"):
-                    for i, s in sel.items():
-                        if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
-                    recarregar_dados()
+        col_c = st.columns([1, 8, 1])[1]
+        with col_c:
+            df_hist = df.copy()
+            if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
+            st.markdown(f"<div style='text-align: center;'>{df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente').to_html(index=False)}</div>", unsafe_allow_html=True)
+            if es_admin:
+                with st.form("d"):
+                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
+                    if st.form_submit_button("🗑️ Deletar"):
+                        for i, s in sel.items():
+                            if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
+                        recarregar_dados()
 
 if es_admin:
     nomes = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]
