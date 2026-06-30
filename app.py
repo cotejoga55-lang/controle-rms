@@ -3,9 +3,8 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import plotly.express as px
 
-# --- CONFIGURAÇÕES E CONEXÃO ---
+# --- CONFIGURAÇÕES ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 def conectar_banco():
@@ -18,7 +17,7 @@ def recarregar_dados():
     st.cache_data.clear()
     st.rerun()
 
-# --- INTERFACE E LOGIN ---
+# --- LOGIN ---
 if 'perfil_logado' not in st.session_state: 
     st.session_state['perfil_logado'] = None
 
@@ -42,7 +41,7 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- LÓGICA E ABAS ---
+# --- LÓGICA LOGADO ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
@@ -71,28 +70,22 @@ with tabs[0]:
     c3.metric("Total de RMs", len(df))
     
     st.divider()
-    st.subheader("Produtividade Mensal")
     
+    # --- FILTRO POR MÊS ---
+    st.subheader("🔎 Filtro de Produtividade Mensal")
     df_concluidas = df[df['status'] == 'Concluída'].copy()
     df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'], errors='coerce')
-    meses_ano = pd.period_range(start='2026-01', end='2026-12', freq='M')
+    df_concluidas['mes_ano'] = df_concluidas['data_retirada'].dt.strftime('%m/%Y')
     
-    if not df_concluidas.empty:
-        df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M')
-        dados_agrupados = df_concluidas.groupby('mes').size()
+    lista_meses = sorted(df_concluidas['mes_ano'].dropna().unique())
+    mes_selecionado = st.selectbox("Selecione o Mês:", ["Todos"] + lista_meses)
+    
+    if mes_selecionado == "Todos":
+        total_mes = len(df_concluidas)
+        st.info(f"Total de RMs concluídas no período: **{total_mes}**")
     else:
-        dados_agrupados = pd.Series(0, index=meses_ano)
-    
-    dados_finais = dados_agrupados.reindex(meses_ano, fill_value=0)
-    dados_finais.index = [m.strftime('%b') for m in dados_finais.index]
-    
-    fig = px.bar(
-        x=dados_finais.index, y=dados_finais.values,
-        labels={'x': 'Mês', 'y': 'Concluídas'},
-        color_discrete_sequence=['#007bff']
-    )
-    fig.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=300, plot_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig, use_container_width=True)
+        total_mes = len(df_concluidas[df_concluidas['mes_ano'] == mes_selecionado])
+        st.success(f"RMs concluídas em {mes_selecionado}: **{total_mes}**")
 
 # --- ABA 1: PAINEL ---
 with tabs[1]:
@@ -113,7 +106,7 @@ with tabs[1]:
             else:
                 st.write("Apenas Administradores podem concluir.")
 
-# --- ABA 2: NOVA RM (Admin) ---
+# --- ABA 2: NOVA RM ---
 if es_admin:
     with tabs[2]:
         with st.form("form_cadastro", clear_on_submit=True):
@@ -125,7 +118,7 @@ if es_admin:
                 st.success("Cadastrado!")
                 recarregar_dados()
 
-# --- ABA: CONSULTA RÁPIDA ---
+# --- ABA: CONSULTA ---
 with tabs[idx_consulta]:
     st.subheader("🔍 Consultar Status de RM")
     c1, c2 = st.columns([3, 1])
