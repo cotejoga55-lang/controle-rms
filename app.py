@@ -99,16 +99,21 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
-                if st.button("🔔 Cobrar", key=f"cobrar_{row['id']}"):
-                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "COBRADO")
-                    st.rerun()
-                if es_admin and row['status'] == 'Aberta':
-                    if st.button(f"⚠️ Em Separação", key=f"em_sep_{row['id']}"):
-                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação")
+                # Criação das colunas para os botões ficarem lado a lado
+                b1, b2, b3 = st.columns(3)
+                with b1:
+                    if st.button("🔔 Cobrar", key=f"cobrar_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "COBRADO")
+                        st.rerun()
+                with b2:
+                    if es_admin and row['status'] == 'Aberta':
+                        if st.button(f"⚠️ Em Separação", key=f"em_sep_{row['id']}"):
+                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação")
+                            recarregar_dados()
+                with b3:
+                    if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada")
                         recarregar_dados()
-                if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
-                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada")
-                    recarregar_dados()
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
