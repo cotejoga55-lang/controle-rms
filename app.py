@@ -35,7 +35,7 @@ if st.session_state['perfil_logado'] is None:
     col1, col_meio, col3 = st.columns([2, 1, 2])
     with col_meio:
         with st.container(border=True):
-            st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_html=True)
+            st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_allow_html=True)
             with st.form("login_form"):
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
@@ -69,28 +69,27 @@ else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASHBOARD ORIGINAL ---
+# --- ABA 0: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
+    
+    # Sino de Notificação
+    cobrancas = df[df['cobranca'] == 'COBRADO']
+    if len(cobrancas) > 0:
+        with st.popover("🔔 NOTIFICAÇÕES PENDENTES"):
+            for _, row in cobrancas.iterrows():
+                st.warning(f"O NÚMERO DA RM {row['numero_rm']} FOI COBRADA!")
+                if st.button(f"Limpar notificação RM {row['numero_rm']}", key=f"clear_{row['id']}"):
+                    cell = sheet.find(str(row['id']), in_column=1)
+                    sheet.update_cell(cell.row, 9, "")
+                    recarregar_dados()
+    else:
+        st.write("🔔 Sem novas cobranças.")
+        
     c1, c2, c3 = st.columns(3)
     c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
     c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
     c3.metric("Total de RMs", len(df))
-    st.divider()
-    st.subheader("🔎 Relatório por Mês")
-    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
-    meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
-    opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
-    mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
-    if mes_escolhido:
-        partes = mes_escolhido.split(" - ")
-        mes_num = list(nomes_meses.values()).index(partes[0]) + 1
-        ano = int(partes[1])
-        separadas = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
-        retiradas = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
-        c_r1, c_r2 = st.columns(2)
-        c_r1.metric("Total Separadas", len(separadas))
-        c_r2.metric("Total Retiradas", len(retiradas))
 
 # --- ABA 1: PAINEL ---
 with tabs[1]:
@@ -117,46 +116,35 @@ with tabs[2]:
                         sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
                         recarregar_dados()
 
-# --- DEMAIS ABAS MANTIDAS ---
+# --- DEMAIS ABAS ---
 if es_admin:
-    with tabs[3]: # Nova RM
+    with tabs[3]:
         with st.form("form_cadastro", clear_on_submit=True):
             num = st.text_input("RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
                 if len(num) == 8 and num.isdigit():
                     novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
-                    sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                    sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
                     recarregar_dados()
 
-# --- ABA 4: CONSULTA ---
 with tabs[idx_consulta]:
     st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
-    
-    if st.button("Pesquisar", key="btn_pesq"):
+    if st.button("Pesquisar"):
         res = df[df['numero_rm'].astype(str) == str(busca).strip()]
-        
         if not res.empty:
             rm = res.iloc[0]
-            val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
-            
-            with st.popover("Detalhes da RM", use_container_width=True):
+            with st.popover("Detalhes", use_container_width=True):
                 if rm['status'] == 'Aberta':
                     st.warning("⚠️ STATUS: ABERTA - AGUARDANDO SEPARAÇÃO.")
-                    st.write(f"**RM:** {rm['numero_rm']}")
-                    
-                    # Botão de sinalização para o visitante/usuário
-                    if st.button("🔔 Cobrar esta RM", key="btn_cobrar"):
+                    if st.button("🔔 Cobrar esta RM"):
                         cell = sheet.find(str(rm['id']), in_column=1)
-                        # Atualiza a coluna 9 (I) com o status de COBRADO
                         sheet.update_cell(cell.row, 9, "COBRADO")
-                        st.success("Cobrança registrada! O setor responsável será notificado.")
+                        st.success("Cobrança registrada!")
                         st.rerun()
-                
                 else:
-                    st.write(f"**RM:** {val(rm['numero_rm'])} | **STATUS:** {val(rm['status'])}")
-                    st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
+                    st.write(f"**RM:** {rm['numero_rm']} | **STATUS:** {rm['status']}")
         else:
             st.error("RM não encontrada.")
 
