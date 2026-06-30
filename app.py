@@ -50,7 +50,7 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- LÓGICA E DADOS ---
+# --- DADOS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
@@ -75,17 +75,19 @@ else:
 # --- ABA 0: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
-    cobrancas = df[df['cobranca'] == 'COBRADO']
-    if len(cobrancas) > 0:
-        with st.popover("🔔 NOTIFICAÇÕES PENDENTES"):
+    
+    # Sino de Notificação (Leitura dinâmica)
+    df_atual = pd.DataFrame(sheet.get_all_records())
+    cobrancas = df_atual[df_atual['cobranca'] == 'COBRADO']
+    
+    if not cobrancas.empty:
+        with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
             for _, row in cobrancas.iterrows():
                 st.warning(f"O NÚMERO DA RM {row['numero_rm']} FOI COBRADA !")
-                # CORREÇÃO: O botão agora chama a função de limpeza de forma direta e clara
-                if st.button(f"Limpar notificação RM {row['numero_rm']}", key=f"clear_{row['id']}"):
+                if st.button(f"Limpar RM {row['numero_rm']}", key=f"clear_{row['id']}"):
                     cell = sheet.find(str(row['id']), in_column=1)
                     sheet.update_cell(cell.row, 9, "")
-                    st.success("Notificação limpa!")
-                    recarregar_dados()
+                    st.rerun()
     else:
         st.write("🔔 Sem novas cobranças.")
     
@@ -94,6 +96,7 @@ with tabs[0]:
     c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
     c3.metric("Total de RMs", len(df))
     st.divider()
+    
     st.subheader("🔎 Relatório por Mês")
     nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
     meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
