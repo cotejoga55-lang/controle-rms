@@ -35,7 +35,7 @@ if st.session_state['perfil_logado'] is None:
     col1, col_meio, col3 = st.columns([2, 1, 2])
     with col_meio:
         with st.container(border=True):
-            st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_align_html=True)
             with st.form("login_form"):
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
@@ -47,7 +47,7 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- LÓGICA E DADOS ---
+# --- DADOS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
@@ -69,7 +69,7 @@ else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASHBOARD ---
+# --- ABA 0: DASHBOARD COMPLETO ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
     
@@ -85,15 +85,31 @@ with tabs[0]:
                     recarregar_dados()
     else:
         st.write("🔔 Sem novas cobranças.")
-        
+    
     c1, c2, c3 = st.columns(3)
     c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
     c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
     c3.metric("Total de RMs", len(df))
+    st.divider()
+    
+    st.subheader("🔎 Relatório por Mês")
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+    meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+    opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
+    mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    
+    if mes_escolhido:
+        partes = mes_escolhido.split(" - ")
+        mes_num = list(nomes_meses.values()).index(partes[0]) + 1
+        ano = int(partes[1])
+        separadas = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
+        retiradas = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
+        c_r1, c_r2 = st.columns(2)
+        c_r1.metric("Total Separadas", len(separadas))
+        c_r2.metric("Total Retiradas", len(retiradas))
 
 # --- ABA 1: PAINEL ---
 with tabs[1]:
-    st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
         cor_status = formatar_status_tempo(row['data_entrada'], row['status'])
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {cor_status}"):
@@ -103,7 +119,6 @@ with tabs[1]:
 
 # --- ABA 2: PEND. RETIRADA ---
 with tabs[2]:
-    st.subheader("RMs Separadas - Aguardando Retirada")
     for _, row in df[df['status'] == 'Separada'].iterrows():
         st.markdown("🟡 **EM PROCESSO DE SEPARAÇÃO (AGUARDANDO RETIRADA)**")
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
@@ -116,20 +131,17 @@ with tabs[2]:
                         sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
                         recarregar_dados()
 
-# --- DEMAIS ABAS ---
+# --- OUTRAS ABAS ---
 if es_admin:
     with tabs[3]:
         with st.form("form_cadastro", clear_on_submit=True):
             num = st.text_input("RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
-                if len(num) == 8 and num.isdigit():
-                    novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
-                    sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
-                    recarregar_dados()
+                sheet.append_row([0, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
+                recarregar_dados()
 
 with tabs[idx_consulta]:
-    st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
     if st.button("Pesquisar"):
         res = df[df['numero_rm'].astype(str) == str(busca).strip()]
@@ -139,23 +151,13 @@ with tabs[idx_consulta]:
                 if rm['status'] == 'Aberta':
                     st.warning("⚠️ STATUS: ABERTA - AGUARDANDO SEPARAÇÃO.")
                     if st.button("🔔 Cobrar esta RM"):
-                        cell = sheet.find(str(rm['id']), in_column=1)
-                        sheet.update_cell(cell.row, 9, "COBRADO")
-                        st.success("Cobrança registrada!")
+                        sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
                         st.rerun()
                 else:
                     st.write(f"**RM:** {rm['numero_rm']} | **STATUS:** {rm['status']}")
-        else:
-            st.error("RM não encontrada.")
 
 with tabs[idx_historico]:
-    st.subheader("📊 Histórico Completo")
     st.dataframe(df, use_container_width=True)
     if es_admin:
-        with st.form("form_deletar"):
-            selecoes = {row['id']: st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']}", key=f"del_{row['id']}") for _, row in df.iterrows()}
-            if st.form_submit_button("🗑️ Deletar Selecionados"):
-                for id_rm, sel in selecoes.items():
-                    if sel:
-                        sheet.delete_rows(sheet.find(str(id_rm), in_column=1).row)
-                recarregar_dados()
+        if st.button("🗑️ Deletar Selecionados"):
+            recarregar_dados()
