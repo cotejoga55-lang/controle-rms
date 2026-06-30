@@ -139,16 +139,31 @@ with tabs[idx_consulta]:
                 st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
 
 # --- ABA HISTÓRICO COM DELETAR ---
+# --- ABA: HISTÓRICO COM CHECKBOX E DELETAR ---
 with tabs[idx_historico]:
     st.subheader("📊 Histórico Completo")
-    st.dataframe(df, use_container_width=True)
     
+    # Criamos um dataframe editável ou visualização com checkboxes
+    # Para praticidade, vamos listar as RMs com checkbox para seleção
     if es_admin:
-        st.divider()
-        st.subheader("🗑️ Excluir RM")
-        rm_para_deletar = st.selectbox("Selecione o ID da RM para excluir:", df['id'].tolist())
-        if st.button("APAGAR RM SELECIONADA"):
-            cell = sheet.find(str(rm_para_deletar), in_column=1)
-            sheet.delete_rows(cell.row)
-            st.success(f"RM ID {rm_para_deletar} removida com sucesso!")
-            recarregar_dados()
+        # Criamos um formulário para deletar
+        with st.form("form_deletar"):
+            # Criamos uma lista de seleção
+            selecoes = {}
+            for index, row in df.iterrows():
+                selecoes[row['id']] = st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']} | Solicitante: {row['solicitante']}", key=f"check_{row['id']}")
+            
+            if st.form_submit_button("🗑️ Deletar Selecionados"):
+                ids_para_deletar = [id_rm for id_rm, selecionado in selecoes.items() if selecionado]
+                
+                if ids_para_deletar:
+                    for id_rm in ids_para_deletar:
+                        # Localiza a linha e deleta
+                        cell = sheet.find(str(id_rm), in_column=1)
+                        sheet.delete_rows(cell.row)
+                    st.success(f"Foram removidas {len(ids_para_deletar)} RMs!")
+                    recarregar_dados()
+                else:
+                    st.warning("Nenhuma RM selecionada.")
+    else:
+        st.dataframe(df, use_container_width=True)
