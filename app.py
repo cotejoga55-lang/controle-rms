@@ -47,6 +47,7 @@ if st.session_state['perfil_logado'] is None:
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
+df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
@@ -75,10 +76,9 @@ def mostrar_conteudo(nome_tab):
         st.divider()
         
         df_sep = df[df['status'] == 'Separada'].copy()
-        df_sep['data_retirada'] = pd.to_datetime(df_sep['data_retirada'])
         agora = obter_hora_brasil()
-        dentro_prazo = df_sep[(agora - df_sep['data_retirada']) <= timedelta(hours=72)]
-        fora_prazo = df_sep[(agora - df_sep['data_retirada']) > timedelta(hours=72)]
+        dentro_prazo = df_sep[(agora - df_sep['data_saida']) <= timedelta(hours=72)]
+        fora_prazo = df_sep[(agora - df_sep['data_saida']) > timedelta(hours=72)]
         cp1, cp2 = st.columns(2)
         cp1.metric("Dentro do prazo (72h)", len(dentro_prazo))
         cp2.metric("Fora do prazo (>72h)", len(fora_prazo))
@@ -112,7 +112,7 @@ def mostrar_conteudo(nome_tab):
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
                         row_idx = sheet.find(str(row['id']), in_column=1).row
-                        sheet.update(range_name=f"H{row_idx}:I{row_idx}", values=[["Separada", obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S")]])
+                        sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "Separada", "", ""]])
                         recarregar_dados()
                 with b4:
                     with st.popover("☁️ Comentários"):
@@ -123,17 +123,17 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
-            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
-                if pd.notnull(row['data_retirada']):
-                    diff = obter_hora_brasil() - row['data_retirada']
-                    if diff > timedelta(hours=72): st.error("⚠️ Rm foi separada a mais de 72 horas")
-                    else: st.success("🟢 Separada dentro das 72 horas")
+            diff = obter_hora_brasil() - pd.to_datetime(row['data_saida'])
+            msg = "🟢 Dentro do prazo (72h)" if diff <= timedelta(hours=72) else "🔴 Fora do prazo (>72h)"
+            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {msg}"):
+                if diff > timedelta(hours=72): st.error(msg)
+                else: st.success(msg)
                 if es_admin:
                     with st.form(f"ret_{row['id']}"):
                         quem = st.text_input("Quem retirou?")
                         if st.form_submit_button("Confirmar"):
                             row_idx = sheet.find(str(row['id']), in_column=1).row
-                            sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
+                            sheet.update(range_name=f"F{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
                             recarregar_dados()
 
     elif nome_tab == "➕ Nova RM":
