@@ -38,9 +38,17 @@ if st.session_state['perfil_logado'] is None:
                 if st.form_submit_button("Entrar", use_container_width=True):
                     if usuario == "pdc" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"; st.rerun()
-                    elif usuario == "visitante" and senha == "123":
+                    elif usuario == "cummins" and senha == "1234":
                         st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
+            st.markdown("""
+            <div style='text-align: center;'>
+            <small>Se você é um solicitador de RM</small><br>
+            <b>usuario: cummins</b><br>
+            <b>senha: 1234</b>
+            </div>
+            """, unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
 sheet = conectar_banco()
