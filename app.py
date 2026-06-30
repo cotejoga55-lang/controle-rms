@@ -1,74 +1,28 @@
 import streamlit as st
-
 import pandas as pd
-
 from datetime import datetime
-
 import gspread
-
 from oauth2client.service_account import ServiceAccountCredentials
 
-
-
-# =====================================================================
-
-# CONFIGURAÇÕES E CONEXÃO
-
-# =====================================================================
-
-CREDENCIAIS = {
-
-    "Admin": {"usuario": "pdc", "senha": "123"},
-
-    "Visitante": {"usuario": "visitante", "senha": "123"}
-
-}
-
-
-
-def conectar_banco():
-
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-    creds_dict = st.secrets["gcp"]
-
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-
-    return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
-
-
-
-# Função para forçar atualização
-
-def recarregar_dados():
-
-    st.cache_data.clear()
-
-    st.rerun()
-
-
-
-# =====================================================================
-
-# INTERFACE E LOGIN
-
-# =====================================================================
-
-import streamlit as st
-import pandas as pd
-# ... (seus outros imports)
-
-# 1. Configuração da página
+# --- CONFIGURAÇÃO E CONEXÃO ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# 2. Inicialização do estado
+def conectar_banco():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds_dict = st.secrets["gcp"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
+
+def recarregar_dados():
+    st.cache_data.clear()
+    st.rerun()
+
+# --- LOGIN ---
 if 'perfil_logado' not in st.session_state: 
     st.session_state['perfil_logado'] = None
 
-# 3. Lógica de Login (Isolada)
 if st.session_state['perfil_logado'] is None:
     col1, col_meio, col3 = st.columns([2, 1, 2])
-    
     with col_meio:
         with st.container(border=True):
             st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_allow_html=True)
@@ -76,7 +30,6 @@ if st.session_state['perfil_logado'] is None:
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
                 entrar = st.form_submit_button("Entrar", use_container_width=True)
-                
                 if entrar:
                     if usuario == "pdc" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"
@@ -86,202 +39,103 @@ if st.session_state['perfil_logado'] is None:
                         st.rerun()
                     else:
                         st.error("Usuário ou senha inválidos.")
-            st.caption("Visitante: visitante / 123")
-    
-    st.stop() # Bloqueia TUDO o que vier abaixo se não estiver logado
+    st.stop()
 
-# =====================================================================
-
-# LÓGICA E ABAS
-
-# =====================================================================
-
+# --- LÓGICA LOGADO ---
 sheet = conectar_banco()
-
 df = pd.DataFrame(sheet.get_all_records())
-
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
-
-
 with st.sidebar:
-
     st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
-
-    if st.button("🚪 Sair"):
-
+    if st.button("🚪 Sair", key="btn_sair"):
         st.session_state['perfil_logado'] = None
-
         st.rerun()
-
-
 
 st.title("📦 Sistema de Controle de RMs")
 
-tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "📊 Histórico"]) if es_admin else st.tabs(["📊 Dashboard", "📋 Painel", "📊 Histórico"])
+# Definição dinâmica das abas
+if es_admin:
+    tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
+    idx_consulta = 3
+    idx_historico = 4
+else:
+    tabs = st.tabs(["📊 Dashboard", "📋 Painel", "🔍 Consulta", "📊 Histórico"])
+    idx_consulta = 2
+    idx_historico = 3
 
-
-
-
-# --- ABA 1: DASHBOARD ---
+# --- ABA 0: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
+    c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
+    c3.metric("Total de RMs", len(df))
     
-    # Suas métricas atuais
-    col1, col2, col3 = st.columns(3)
-    col1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
-    col2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
-    col3.metric("Total de RMs", len(df))
-    
-    st.divider() # Uma linha horizontal para separar as métricas do gráfico
-    
- # --- BLOCO DE PRODUTIVIDADE MENSAL (12 MESES) ---
+    st.divider()
     st.subheader("Produtividade Mensal")
-    
-    # 1. Preparar os dados
     df_concluidas = df[df['status'] == 'Concluída'].copy()
     df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'], errors='coerce')
-    
-    # 2. Criar uma série de 12 meses do ano atual (2026)
     meses_ano = pd.period_range(start='2026-01', end='2026-12', freq='M')
     
     if not df_concluidas.empty:
         df_concluidas['mes'] = df_concluidas['data_retirada'].dt.to_period('M')
         dados_agrupados = df_concluidas.groupby('mes').size()
     else:
-        # Se não houver nada, cria uma série vazia
         dados_agrupados = pd.Series(0, index=meses_ano)
-
-    # 3. Garantir que todos os 12 meses estejam presentes (preenche com 0 se faltar)
+    
     dados_finais = dados_agrupados.reindex(meses_ano, fill_value=0)
-    
-    # 4. Formatar o índice para string legível (Jan, Fev...)
     dados_finais.index = [m.strftime('%b') for m in dados_finais.index]
-
-    # 5. Exibir gráfico
-    # --- BLOCO ATUALIZADO (AJUSTE PARA CELULAR) ---
-    st.subheader("Produtividade Mensal")
     
-    # [O restante do seu código de preparação de dados (meses_ano, dados_finais) continua igual]
-    # ...
-    
-    # 5. Exibir gráfico ajustado
-    # Esta parte vai centralizar e dar o respiro que você precisa
     col_left, col_mid, col_right = st.columns([1, 8, 1])
-    
     with col_mid:
-        st.bar_chart(
-            dados_finais, 
-            use_container_width=True, 
-            color="#007bff"
-        )
-    )
+        st.bar_chart(dados_finais, use_container_width=True, color="#007bff")
 
-
-# --- ABA 2: PAINEL ---
-
+# --- ABA 1: PAINEL ---
 with tabs[1]:
-
     st.subheader("Gestão de RMs em Aberto")
-
-    abertas = df[df['status'] == 'Aberta']
-
-    for _, row in abertas.iterrows():
-
-        with st.expander(f"RM: {row['numero_rm']} - Solicitante: {row['solicitante']}"):
-
+    for _, row in df[df['status'] == 'Aberta'].iterrows():
+        with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
-
-                if st.button(f"✅ Marcar como Concluída", key=f"btn_{row['id']}"):
-
+                if st.button(f"✅ Concluir {row['numero_rm']}", key=f"btn_{row['id']}"):
                     st.session_state[f'concluir_{row["id"]}'] = True
-
                 if st.session_state.get(f'concluir_{row["id"]}'):
-
                     with st.form(f"form_{row['id']}"):
-
                         quem = st.text_input("Quem retirou?")
-
                         if st.form_submit_button("Confirmar"):
-
                             agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
                             cell = sheet.find(str(row['id']), in_column=1)
-
                             sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
-
                             recarregar_dados()
-
             else:
+                st.write("Apenas Administradores podem concluir.")
 
-                st.write("Apenas Administradores podem alterar o status.")
-
-
-
-# --- ABA 3: NOVA RM (Apenas Admin) ---
-
+# --- ABA 2: NOVA RM (Admin) ---
 if es_admin:
-
     with tabs[2]:
-
         with st.form("form_cadastro", clear_on_submit=True):
-
             num = st.text_input("Número da RM")
-
             sol = st.text_input("Solicitante")
-
             if st.form_submit_button("Cadastrar"):
-
                 novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
-
                 sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
-
                 st.success("Cadastrado!")
-
                 recarregar_dados()
 
-# --- ABA: CONSULTA RÁPIDA ---
-# (Certifique-se de que a aba existe na sua lista de tabs)
-with tabs[3]: 
-    st.subheader("🔍 Consultar Status de RM")
-    
-    # Criamos um layout com input e botão lado a lado
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        busca_rm = st.text_input("Digite o número da RM:", key="input_busca")
-    with c2:
-        st.write("###") # Alinhamento visual
-        btn_pesquisar = st.button("Pesquisar", key="btn_pesquisar_rm")
-    
-    # A pesquisa só acontece se o botão for clicado
-    if btn_pesquisar and busca_rm:
-        # Converter para string e limpar espaços
-        df['numero_rm_str'] = df['numero_rm'].astype(str).str.strip()
-        busca_rm_str = str(busca_rm).strip()
-        
-        resultado = df[df['numero_rm_str'] == busca_rm_str]
-        
-        if not resultado.empty:
-            rm = resultado.iloc[0]
-            with st.popover("Ver Detalhes da RM", use_container_width=True):
-                st.markdown(f"### Detalhes RM: {rm['numero_rm']}")
-                st.write(f"**Status:** {rm['status']}")
-                st.write(f"**Solicitante:** {rm['solicitante']}")
-                st.write(f"**Data Entrada:** {rm['data_entrada']}")
-                
-                if rm['status'] == 'Concluída':
-                    st.success("✅ RM Concluída")
-                    st.write(f"**Data Retirada:** {rm['data_retirada']}")
-                    st.write(f"**Quem Retirou:** {rm['quem_retirou']}")
-                else:
-                    st.warning("⚠️ RM ainda em aberto.")
+# --- ABA: CONSULTA (Dinâmica) ---
+with tabs[idx_consulta]:
+    st.subheader("🔍 Consulta")
+    busca = st.text_input("Nº da RM:", key="input_busca")
+    if st.button("Pesquisar", key="btn_pesq"):
+        df_str = df.copy()
+        df_str['numero_rm_str'] = df_str['numero_rm'].astype(str).str.strip()
+        res = df_str[df_str['numero_rm_str'] == str(busca).strip()]
+        if not res.empty:
+            with st.popover("Ver Detalhes"):
+                st.write(f"**RM:** {res.iloc[0]['numero_rm']} | **Status:** {res.iloc[0]['status']}")
         else:
             st.error("RM não encontrada.")
 
 # --- ABA FINAL: HISTÓRICO ---
-
-
-with tabs[-1]:
-
+with tabs[idx_historico]:
     st.dataframe(df, use_container_width=True)
-
