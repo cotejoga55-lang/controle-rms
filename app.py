@@ -46,7 +46,7 @@ if st.session_state['perfil_logado'] is None:
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
-# Auto-refresh a cada 30 segundos
+# Auto-refresh
 if 'last_refresh' not in st.session_state: st.session_state['last_refresh'] = time.time()
 if time.time() - st.session_state['last_refresh'] > 30:
     st.session_state['last_refresh'] = time.time()
@@ -73,16 +73,19 @@ else:
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
-        df_raw = pd.DataFrame(sheet.get_all_records())
-        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
-        if not cobrancas.empty:
-            with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
-                for _, row in cobrancas.iterrows():
-                    st.warning(f"RM {row['numero_rm']} COBRADA!")
-                    if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
-                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
-                        st.rerun()
-        else: st.write("🔔 Sem novas cobranças.")
+        placeholder = st.empty()
+        with placeholder.container():
+            df_raw = pd.DataFrame(sheet.get_all_records())
+            cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
+            if not cobrancas.empty:
+                with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
+                    for _, row in cobrancas.iterrows():
+                        st.warning(f"RM {row['numero_rm']} COBRADA!")
+                        if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
+                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
+                            st.rerun()
+            else: st.write("🔔 Sem novas cobranças.")
+        
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
