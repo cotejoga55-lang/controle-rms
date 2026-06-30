@@ -36,7 +36,7 @@ if st.session_state['perfil_logado'] is None:
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
                 if st.form_submit_button("Entrar", use_container_width=True):
-                    if usuario == "uj455" and senha == "123":
+                    if usuario == "pdc" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234":
                         st.session_state['perfil_logado'] = "Visitante"; st.rerun()
@@ -139,10 +139,15 @@ def mostrar_conteudo(nome_tab):
                 rm = res.iloc[0]
                 with st.popover("Detalhes", use_container_width=True):
                     if rm['status'] == 'Aberta':
+                        st.write(f"Status: **Aberta**")
                         if st.button("🔔 Cobrar", key="c_c"):
                             sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
                             st.rerun()
-                    else: st.write(f"RM: {rm['numero_rm']} | Status: {rm['status']}")
+                    elif rm['status'] == 'Separada':
+                        st.write("🟡 **EM PROCESSO DE SEPARAÇÃO**")
+                    else:
+                        st.write(f"Status: **{rm['status']}**")
+            else: st.write("RM não encontrada.")
 
     elif nome_tab == "📊 Histórico":
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
