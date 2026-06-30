@@ -40,7 +40,6 @@ if st.session_state['perfil_logado'] is None:
                     if usuario == "pdc" and senha == "123": st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234": st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
-            st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
@@ -86,6 +85,17 @@ def mostrar_conteudo(nome_tab):
             c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
 
     elif nome_tab == "📋 Painel":
+        # Contador de prazos
+        df_sep = df[df['status'] == 'Separada'].copy()
+        df_sep['data_retirada'] = pd.to_datetime(df_sep['data_retirada'])
+        agora = obter_hora_brasil()
+        dentro_prazo = df_sep[(agora - df_sep['data_retirada']) <= timedelta(hours=72)]
+        fora_prazo = df_sep[(agora - df_sep['data_retirada']) > timedelta(hours=72)]
+        c_p1, c_p2 = st.columns(2)
+        c_p1.metric("Dentro do prazo (72h)", len(dentro_prazo))
+        c_p2.metric("Fora do prazo (>72h)", len(fora_prazo))
+        st.divider()
+
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
                 b1, b2, b3, b4 = st.columns(4)
@@ -115,8 +125,8 @@ def mostrar_conteudo(nome_tab):
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
                 if pd.notnull(row['data_retirada']):
                     diff = obter_hora_brasil() - row['data_retirada']
-                    if diff > timedelta(hours=72): st.error("⚠️ RM separada a mais de 72 horas")
-                    else: st.success("🟢 Dentro do prazo (72h)")
+                    if diff > timedelta(hours=72): st.error("⚠️ Rm foi separada a mais de 72 horas")
+                    else: st.success("🟢 Separada dentro das 72 horas")
                 if es_admin:
                     with st.form(f"ret_{row['id']}"):
                         quem = st.text_input("Quem retirou?")
