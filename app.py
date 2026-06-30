@@ -65,111 +65,50 @@ else:
     tabs = st.tabs(["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
 
 def mostrar_conteudo(nome_tab):
+    # ... (Mantenha o conteúdo anterior de Dashboard, Painel, Pend. Retirada, Nova RM)
     if nome_tab == "📊 Dashboard":
-        df_raw = pd.DataFrame(sheet.get_all_records())
-        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
-        if not cobrancas.empty:
-            with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
-                for _, row in cobrancas.iterrows():
-                    st.warning(f"RM {row['numero_rm']} COBRADA!")
-                    if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
-                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
-                        st.rerun()
-        else: st.write("🔔 Sem novas cobranças.")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
-        c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
-        c3.metric("Total", len(df))
-        st.divider()
-        
-        nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
-        meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
-        opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
-        mes_escolhido = st.selectbox("Mês:", opcoes)
-        if mes_escolhido:
-            partes = mes_escolhido.split(" - ")
-            m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
-            ano = int(partes[1])
-            c_r1, c_r2 = st.columns(2)
-            c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
-            c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
-
+        # (Código omitido para brevidade, mantenha o seu anterior)
+        pass 
     elif nome_tab == "📋 Painel":
-        for _, row in df[df['status'] == 'Aberta'].iterrows():
-            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
-                if st.button("🔔 Cobrar", key=f"cobrar_{row['id']}"):
-                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "COBRADO")
-                    st.rerun()
-                if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
-                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada")
-                    recarregar_dados()
-
+        # (Código omitido para brevidade, mantenha o seu anterior)
+        pass
     elif nome_tab == "📦 Pend. Retirada":
-        for _, row in df[df['status'] == 'Separada'].iterrows():
-            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
-                if es_admin:
-                    with st.form(f"ret_{row['id']}"):
-                        quem = st.text_input("Quem retirou?")
-                        if st.form_submit_button("Confirmar"):
-                            sheet.update(range_name=f"E{sheet.find(str(row['id']), in_column=1).row}:H{sheet.find(str(row['id']), in_column=1).row}", 
-                                         values=[[datetime.now().strftime("%Y-%m-%d %H:%M:%S"), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
-                            recarregar_dados()
-
+        # (Código omitido para brevidade, mantenha o seu anterior)
+        pass
     elif nome_tab == "➕ Nova RM":
-        with st.form("cad", clear_on_submit=True):
-            num = st.text_input("RM (8 dígitos)", max_chars=8)
-            sol = st.text_input("Solicitante")
-            if st.form_submit_button("Cadastrar"):
-                if len(num) != 8 or not num.isdigit():
-                    st.error("Erro: A RM deve conter exatamente 8 dígitos numéricos.")
-                elif not sol:
-                    st.error("Erro: O campo Solicitante é obrigatório.")
-                elif str(num) in df['numero_rm'].astype(str).values:
-                    st.warning("Atenção: Esta RM já está cadastrada e em processo de separação!")
-                else:
-                    sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
-                    st.success("RM cadastrada com sucesso!")
-                    recarregar_dados()
+        # (Código omitido para brevidade, mantenha o seu anterior)
+        pass
 
     elif nome_tab == "🔍 Consulta":
-        busca = st.text_input("RM:", key="b")
-        if st.button("Pesquisar"):
+        st.subheader("🔍 Consultar RM")
+        # Cria a sugestão baseada nas RMs existentes
+        lista_rms = df['numero_rm'].astype(str).tolist()
+        
+        # Selectbox funciona como um buscador dinâmico
+        busca = st.selectbox("Digite ou selecione a RM (8 dígitos):", [""] + lista_rms)
+        
+        if busca:
             res = df[df['numero_rm'].astype(str) == str(busca).strip()]
             if not res.empty:
                 rm = res.iloc[0]
-                with st.popover("Detalhes", use_container_width=True):
+                with st.container(border=True):
+                    st.write(f"**RM:** {rm['numero_rm']} | **Solicitante:** {rm['solicitante']}")
                     if rm['status'] == 'Aberta':
-                        st.write(f"Status: **Aberta**")
+                        st.write("Status: **Aberta**")
                         if st.button("🔔 Cobrar", key="c_c"):
                             sheet.update_cell(sheet.find(str(rm['id']), in_column=1).row, 9, "COBRADO")
                             st.rerun()
                     elif rm['status'] == 'Separada':
-                        st.write("🟡 **Separada aguardando retirada**")
+                        st.write("Status: 🟡 **Separada aguardando retirada**")
                     else:
                         st.write(f"Status: **{rm['status']}**")
-            else: st.write("RM não encontrada.")
+            else:
+                st.warning("RM não encontrada.")
 
     elif nome_tab == "📊 Histórico":
-        st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
-        col_centro = st.columns([1, 8, 1])[1]
-        with col_centro:
-            df_hist = df.copy()
-            if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
-            df_hist = df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']]
-            df_hist[['data_retirada', 'quem_retirou']] = df_hist[['data_retirada', 'quem_retirou']].fillna("Pendente")
-            st.markdown(f"<div style='text-align: center;'>{df_hist.to_html(classes='table table-striped', index=False, justify='center')}</div>", unsafe_allow_html=True)
-            if es_admin:
-                with st.form("d"):
-                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
-                    if st.form_submit_button("🗑️ Deletar"):
-                        for i, s in sel.items():
-                            if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
-                        recarregar_dados()
+        # (Código do Histórico anterior)
+        pass
 
-if es_admin:
-    nomes = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]
-else:
-    nomes = ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
-
-for i, nome in enumerate(nomes):
+# Execução das tabs
+for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
     with tabs[i]: mostrar_conteudo(nome)
