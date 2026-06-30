@@ -6,6 +6,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
+# Função de conexão mantida
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
@@ -73,22 +74,23 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
+            # Chaves únicas com prefixo no expander
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
-                b1, b2, b3, b4 = st.columns(4)
+                b1, b2, b3 = st.columns(3)
                 with b1:
                     with st.popover("🔔 Cobrar"):
-                        nome = st.text_input("Quem está cobrando?", key=f"cob_{row['id']}")
-                        if st.button("Confirmar", key=f"btn_c_{row['id']}"):
+                        # Chave única para o input de cobrança
+                        nome = st.text_input("Quem está cobrando?", key=f"cob_txt_{row['id']}")
+                        if st.button("Confirmar", key=f"btn_cob_{row['id']}"):
                             sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, f"{nome} está cobrando"); st.rerun()
-                with b2:
-                    if es_admin and row['status'] == 'Aberta':
-                        if st.button(f"⚠️ Em Separação", key=f"btn_sep_em_{row['id']}"):
-                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
-                with b3:
-                    if es_admin and st.button(f"✅ Separada", key=f"btn_sep_final_{row['id']}"):
-                        row_idx = sheet.find(str(row['id']), in_column=1).row
-                        sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "Separada", "", ""]])
-                        recarregar_dados()
+                if es_admin and row['status'] == 'Aberta':
+                    if b2.button(f"⚠️ Em Separação", key=f"btn_sep_em_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
+                if es_admin and b3.button(f"✅ Separada", key=f"btn_sep_final_{row['id']}"):
+                    row_idx = sheet.find(str(row['id']), in_column=1).row
+                    # REGISTRA DATA NO CLIQUE
+                    sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "Separada", "", ""]])
+                    recarregar_dados()
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
@@ -98,7 +100,7 @@ def mostrar_conteudo(nome_tab):
                 if diff > timedelta(hours=72): st.error(msg)
                 else: st.success(msg)
                 if es_admin:
-                    with st.form(f"ret_{row['id']}"):
+                    with st.form(f"form_ret_{row['id']}"): # Chave única para o formulário
                         quem = st.text_input("Quem retirou?", key=f"ret_in_{row['id']}")
                         if st.form_submit_button("Confirmar"):
                             row_idx = sheet.find(str(row['id']), in_column=1).row
@@ -111,12 +113,13 @@ def mostrar_conteudo(nome_tab):
         with col_c:
             st.markdown(f"<div style='text-align: center;'>{df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente').to_html(index=False)}</div>", unsafe_allow_html=True)
             if es_admin:
-                with st.form("d"):
-                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"del_{r['id']}") for _, r in df.iterrows()}
+                with st.form("form_delete"): # Chave única
+                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"del_chk_{r['id']}") for _, r in df.iterrows()}
                     if st.form_submit_button("🗑️ Deletar"):
                         for i, s in sel.items():
                             if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
                         recarregar_dados()
 
+# Renderização final
 for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
     with tabs[i]: mostrar_conteudo(nome)
