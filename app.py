@@ -112,6 +112,7 @@ def mostrar_conteudo(nome_tab):
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
                         row_idx = sheet.find(str(row['id']), in_column=1).row
+                        # REGISTRA A DATA NO MOMENTO DO CLIQUE
                         sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "Separada", "", ""]])
                         recarregar_dados()
                 with b4:
