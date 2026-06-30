@@ -61,13 +61,10 @@ st.title("📦 Sistema de Controle de RMs")
 
 if es_admin:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
-    idx_consulta, idx_historico = 4, 5
 else:
     tabs = st.tabs(["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
-    idx_consulta, idx_historico = 2, 3
 
-# Mapeamento dinâmico baseado no perfil
-def mostrar_conteudo(tab_index, nome_tab):
+def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
         df_raw = pd.DataFrame(sheet.get_all_records())
         cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
@@ -84,11 +81,15 @@ def mostrar_conteudo(tab_index, nome_tab):
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
         st.divider()
+        
+        nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
         meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
-        opcoes = [f"{m.month}/{m.year}" for m in meses_disponiveis]
+        opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
         mes_escolhido = st.selectbox("Mês:", opcoes)
         if mes_escolhido:
-            m_num, ano = map(int, mes_escolhido.split("/"))
+            partes = mes_escolhido.split(" - ")
+            m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
+            ano = int(partes[1])
             c_r1, c_r2 = st.columns(2)
             c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
             c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
@@ -138,16 +139,11 @@ def mostrar_conteudo(tab_index, nome_tab):
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
         col_centro = st.columns([1, 8, 1])[1]
         with col_centro:
-            # Filtro para visitante: apenas Concluídas
             df_hist = df.copy()
-            if not es_admin:
-                df_hist = df_hist[df_hist['status'] == 'Concluída']
+            if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
             df_hist = df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']]
             df_hist[['data_retirada', 'quem_retirou']] = df_hist[['data_retirada', 'quem_retirou']].fillna("Pendente")
-            
-            tabela_html = df_hist.to_html(classes="table table-striped", index=False, justify="center")
-            st.markdown(f"<div style='text-align: center;'>{tabela_html}</div>", unsafe_allow_html=True)
-            
+            st.markdown(f"<div style='text-align: center;'>{df_hist.to_html(classes='table table-striped', index=False, justify='center')}</div>", unsafe_allow_html=True)
             if es_admin:
                 with st.form("d"):
                     sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
@@ -156,10 +152,10 @@ def mostrar_conteudo(tab_index, nome_tab):
                             if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
                         recarregar_dados()
 
-# Renderização das abas
 if es_admin:
-    for i, nome in enumerate(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]):
-        with tabs[i]: mostrar_conteudo(i, nome)
+    nomes = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]
 else:
-    for i, nome in enumerate(["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
-        with tabs[i]: mostrar_conteudo(i, nome)
+    nomes = ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
+
+for i, nome in enumerate(nomes):
+    with tabs[i]: mostrar_conteudo(nome)
