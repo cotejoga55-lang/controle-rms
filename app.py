@@ -69,15 +69,16 @@ else:
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
         df_raw = pd.DataFrame(sheet.get_all_records())
-        cobrancas = df_raw[df_raw['cobranca'].str.contains("está cobrando", case=False, na=False)]
-        if not cobrancas.empty:
-            with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
-                for _, row in cobrancas.iterrows():
-                    st.warning(f"{row['cobranca']} esta RM!")
+        # Filtra notificações de cobrança OU de comentário
+        avisos = df_raw[df_raw['cobranca'].str.contains("está cobrando|Comentario adicionado", case=False, na=False)]
+        if not avisos.empty:
+            with st.popover(f"🔔 NOTIFICAÇÕES ({len(avisos)})"):
+                for _, row in avisos.iterrows():
+                    st.warning(f"{row['cobranca']} na RM {row['numero_rm']}!")
                     if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
                         sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
                         st.rerun()
-        else: st.write("🔔 Sem novas cobranças.")
+        else: st.write("🔔 Sem novas notificações.")
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
@@ -99,7 +100,6 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
-                # Layout das colunas para os botões lado a lado
                 b1, b2, b3, b4 = st.columns(4)
                 with b1:
                     with st.popover("🔔 Cobrar"):
@@ -121,6 +121,7 @@ def mostrar_conteudo(nome_tab):
                         com = st.text_area("Obs:", value=row.get('comentario', ''), key=f"com_{row['id']}")
                         if st.button("Salvar", key=f"save_{row['id']}"):
                             sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 11, com)
+                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "Comentario adicionado")
                             st.rerun()
 
     elif nome_tab == "📦 Pend. Retirada":
@@ -139,48 +140,20 @@ def mostrar_conteudo(nome_tab):
             num = st.text_input("RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
-                if len(num) != 8 or not num.isdigit():
-                    st.error("Erro: A RM deve conter exatamente 8 dígitos numéricos.")
-                elif not sol:
-                    st.error("Erro: O campo Solicitante é obrigatório.")
-                else:
-                    sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
-                    st.success("RM cadastrada com sucesso!")
-                    recarregar_dados()
+                sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
+                st.success("RM cadastrada com sucesso!"); recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
         st.subheader("🔍 Consultar RM")
         busca = st.text_input("Digite a RM (8 dígitos):", max_chars=8)
         if st.button("Pesquisar"):
-            if busca and len(str(busca)) == 8 and str(busca).isdigit():
-                res = df[df['numero_rm'].astype(str) == str(busca).strip()]
-                if not res.empty:
-                    rm = res.iloc[0]
-                    with st.container(border=True):
-                        st.write(f"**RM:** {rm['numero_rm']} | **Solicitante:** {rm['solicitante']}")
-                        if rm['status'] == 'Aberta':
-                            st.write("Status: **Aberta**")
-                        elif rm['status'] == 'Separada':
-                            st.write("Status: 🟡 **Separada aguardando retirada**")
-                        else:
-                            st.write(f"Status: **{rm['status']}**")
-                else: st.warning("RM não encontrada.")
-            else: st.error("A RM deve conter exatamente 8 dígitos numéricos.")
+            res = df[df['numero_rm'].astype(str) == str(busca).strip()]
+            if not res.empty:
+                st.write(f"**RM:** {res.iloc[0]['numero_rm']} | **Solicitante:** {res.iloc[0]['solicitante']}")
+            else: st.warning("Não encontrada.")
 
     elif nome_tab == "📊 Histórico":
-        st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
-        col_c = st.columns([1, 8, 1])[1]
-        with col_c:
-            df_hist = df.copy()
-            if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
-            st.markdown(f"<div style='text-align: center;'>{df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente').to_html(index=False)}</div>", unsafe_allow_html=True)
-            if es_admin:
-                with st.form("d"):
-                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
-                    if st.form_submit_button("🗑️ Deletar"):
-                        for i, s in sel.items():
-                            if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
-                        recarregar_dados()
+        st.table(df[['numero_rm', 'status', 'quem_retirou']])
 
 if es_admin:
     nomes = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]
