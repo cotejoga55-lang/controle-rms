@@ -42,6 +42,7 @@ if st.session_state['perfil_logado'] is None:
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
+df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
@@ -66,8 +67,6 @@ def mostrar_conteudo(nome_tab):
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
         st.divider()
-        
-        # RESTAURADO: Filtro Mensal
         nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
         meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
         opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
@@ -96,6 +95,7 @@ def mostrar_conteudo(nome_tab):
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
                         row_idx = sheet.find(str(row['id']), in_column=1).row
+                        # REGISTRA DATA SAÍDA NA COLUNA E
                         sheet.update_cell(row_idx, 5, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         sheet.update_cell(row_idx, 8, "Separada"); recarregar_dados()
                 with b4:
@@ -107,7 +107,15 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
-            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
+            # Lógica do semáforo
+            tempo_decorrido = datetime.now() - pd.to_datetime(row['data_saida'])
+            is_atrasado = tempo_decorrido > timedelta(hours=72)
+            
+            label_semaforo = "🔴 Separada a mais de 72 horas" if is_atrasado else "🟢 Separada recentemente"
+            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {label_semaforo}"):
+                if is_atrasado: st.error(label_semaforo)
+                else: st.success(label_semaforo)
+                
                 if es_admin:
                     with st.form(key=f"ret_form_{row['id']}"):
                         quem = st.text_input("Quem retirou?", key=f"quem_in_{row['id']}")
