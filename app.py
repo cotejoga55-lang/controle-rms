@@ -68,40 +68,36 @@ with tabs[0]:
     c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
     c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
     c3.metric("Total de RMs", len(df))
-    
     st.divider()
+    
     st.subheader("🔎 Relatório por Mês")
     df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
     df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
-    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 
-                   7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
     meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
     opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
     mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    
     if mes_escolhido:
         partes = mes_escolhido.split(" - ")
         mes_nome, ano = partes[0], int(partes[1])
         mes_num = list(nomes_meses.values()).index(mes_nome) + 1
-        separadas_dash = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
-        retiradas_dash = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
+        separadas = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
+        retiradas = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
         c_r1, c_r2 = st.columns(2)
-        c_r1.metric("Total Separadas", len(separadas_dash))
-        c_r2.metric("Total Retiradas", len(retiradas_dash))
+        c_r1.metric("Total Separadas", len(separadas))
+        c_r2.metric("Total Retiradas", len(retiradas))
 
-# --- ABA 1: PAINEL ---
+# --- ABA 1 e 2: PAINÉIS ---
 with tabs[1]:
-    st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
-            if es_admin:
-                if st.button(f"✅ Marcar como SEPARADA", key=f"sep_{row['id']}"):
-                    cell = sheet.find(str(row['id']), in_column=1)
-                    sheet.update_cell(cell.row, 8, "Separada")
-                    recarregar_dados()
+            if es_admin and st.button(f"✅ Marcar como SEPARADA", key=f"sep_{row['id']}"):
+                cell = sheet.find(str(row['id']), in_column=1)
+                sheet.update_cell(cell.row, 8, "Separada")
+                recarregar_dados()
 
-# --- ABA 2: PEND. RETIRADA ---
 with tabs[2]:
-    st.subheader("RMs Separadas - Aguardando Retirada")
     for _, row in df[df['status'] == 'Separada'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
@@ -113,7 +109,7 @@ with tabs[2]:
                         sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
                         recarregar_dados()
 
-# --- ABA 3: NOVA RM (Admin) ---
+# --- ABA 3: NOVA RM ---
 if es_admin:
     with tabs[3]:
         with st.form("form_cadastro", clear_on_submit=True):
@@ -125,9 +121,8 @@ if es_admin:
                     sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
                     recarregar_dados()
 
-# --- ABA CONSULTA ---
+# --- ABA 4: CONSULTA ---
 with tabs[idx_consulta]:
-    st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
     if st.button("Pesquisar", key="btn_pesq"):
         res = df[df['numero_rm'].astype(str) == str(busca).strip()]
@@ -138,32 +133,22 @@ with tabs[idx_consulta]:
                 st.write(f"**RM:** {val(rm['numero_rm'])} | **STATUS:** {val(rm['status'])}")
                 st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
 
-# --- ABA HISTÓRICO COM DELETAR ---
-# --- ABA: HISTÓRICO COM CHECKBOX E DELETAR ---
+# --- ABA 5: HISTÓRICO COM CHECKBOX DELETAR ---
 with tabs[idx_historico]:
     st.subheader("📊 Histórico Completo")
+    st.dataframe(df, use_container_width=True)
     
-    # Criamos um dataframe editável ou visualização com checkboxes
-    # Para praticidade, vamos listar as RMs com checkbox para seleção
     if es_admin:
-        # Criamos um formulário para deletar
+        st.divider()
+        st.subheader("🗑️ Gerenciamento de Exclusão")
         with st.form("form_deletar"):
-            # Criamos uma lista de seleção
             selecoes = {}
             for index, row in df.iterrows():
-                selecoes[row['id']] = st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']} | Solicitante: {row['solicitante']}", key=f"check_{row['id']}")
+                selecoes[row['id']] = st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']}", key=f"del_{row['id']}")
             
             if st.form_submit_button("🗑️ Deletar Selecionados"):
-                ids_para_deletar = [id_rm for id_rm, selecionado in selecoes.items() if selecionado]
-                
-                if ids_para_deletar:
-                    for id_rm in ids_para_deletar:
-                        # Localiza a linha e deleta
-                        cell = sheet.find(str(id_rm), in_column=1)
-                        sheet.delete_rows(cell.row)
-                    st.success(f"Foram removidas {len(ids_para_deletar)} RMs!")
-                    recarregar_dados()
-                else:
-                    st.warning("Nenhuma RM selecionada.")
-    else:
-        st.dataframe(df, use_container_width=True)
+                ids_deletar = [id_rm for id_rm, sel in selecoes.items() if sel]
+                for id_rm in ids_deletar:
+                    cell = sheet.find(str(id_rm), in_column=1)
+                    sheet.delete_rows(cell.row)
+                recarregar_dados()
