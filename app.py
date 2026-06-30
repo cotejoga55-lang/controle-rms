@@ -148,6 +148,7 @@ with tabs[idx_consulta]:
                 st.write(f"**SOLICITANTE:** {val(rm['solicitante'])}")
                 st.write(f"**DATA DA SEPARAÇÃO:** {val(rm['data_entrada'])}")
                 st.write(f"**DATA DA RETIRADA:** {val(rm['data_retirada'])}")
+                st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
                 st.write(f"**STATUS:** {val(rm['status'])}")
         else:
             st.error("RM não encontrada.")
