@@ -3,18 +3,18 @@ import pandas as pd
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import pytz
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
-
-# Define o fuso horário de Brasília
-tz = pytz.timezone('America/Sao_Paulo')
 
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
+
+def obter_hora_brasil():
+    # Ajuste manual de -3 horas em relação ao UTC (Horário de Brasília)
+    return datetime.utcnow() - timedelta(hours=3)
 
 def recarregar_dados():
     st.cache_data.clear()
@@ -23,7 +23,7 @@ def recarregar_dados():
 def formatar_status_tempo(data_entrada, status):
     if status == "Separada": return "🟡 **EM PROCESSO DE SEPARAÇÃO**"
     if status == "Em Separação": return "⚠️ **SEPARANDO AGORA**"
-    agora = datetime.now(tz).replace(tzinfo=None)
+    agora = obter_hora_brasil()
     diferenca = agora - pd.to_datetime(data_entrada)
     if diferenca > timedelta(hours=24): return f"🔴 **ATRASADA (>24h)**"
     else: return f"🟢 **NO PRAZO**"
@@ -86,9 +86,8 @@ def mostrar_conteudo(nome_tab):
                             sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
-                        # Salva o status e a data exata da separação agora
                         row_idx = sheet.find(str(row['id']), in_column=1).row
-                        sheet.update(range_name=f"H{row_idx}:I{row_idx}", values=[["Separada", datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")]])
+                        sheet.update(range_name=f"H{row_idx}:I{row_idx}", values=[["Separada", obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S")]])
                         recarregar_dados()
                 with b4:
                     with st.popover("☁️ Comentários"):
@@ -100,9 +99,8 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
-                # Semáforo 72h
                 if pd.notnull(row['data_retirada']):
-                    diff = datetime.now(tz).replace(tzinfo=None) - row['data_retirada']
+                    diff = obter_hora_brasil() - row['data_retirada']
                     if diff > timedelta(hours=72): st.error("⚠️ RM separada a mais de 72 horas")
                     else: st.success("🟢 Dentro do prazo (72h)")
                 
@@ -111,7 +109,7 @@ def mostrar_conteudo(nome_tab):
                         quem = st.text_input("Quem retirou?")
                         if st.form_submit_button("Confirmar Retirada"):
                             row_idx = sheet.find(str(row['id']), in_column=1).row
-                            sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
+                            sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
                             recarregar_dados()
 
     elif nome_tab == "➕ Nova RM":
@@ -119,7 +117,7 @@ def mostrar_conteudo(nome_tab):
             num = st.text_input("RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
-                sheet.append_row([len(df)+1, num, sol, datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
+                sheet.append_row([len(df)+1, num, sol, obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
                 st.success("RM cadastrada!"); recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
