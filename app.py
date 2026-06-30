@@ -66,27 +66,77 @@ else:
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
-        # ... (Mantido o código anterior para Dashboard)
-        pass 
+        df_raw = pd.DataFrame(sheet.get_all_records())
+        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
+        if not cobrancas.empty:
+            with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
+                for _, row in cobrancas.iterrows():
+                    st.warning(f"RM {row['numero_rm']} COBRADA!")
+                    if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
+                        st.rerun()
+        else: st.write("🔔 Sem novas cobranças.")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
+        c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
+        c3.metric("Total", len(df))
+        st.divider()
+        
+        nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+        meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+        opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
+        mes_escolhido = st.selectbox("Mês:", opcoes)
+        if mes_escolhido:
+            partes = mes_escolhido.split(" - ")
+            m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
+            ano = int(partes[1])
+            c_r1, c_r2 = st.columns(2)
+            c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
+            c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
+
     elif nome_tab == "📋 Painel":
-        # ... (Mantido o código anterior para Painel)
-        pass
+        for _, row in df[df['status'] == 'Aberta'].iterrows():
+            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
+                if st.button("🔔 Cobrar", key=f"cobrar_{row['id']}"):
+                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "COBRADO")
+                    st.rerun()
+                if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
+                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada")
+                    recarregar_dados()
+
     elif nome_tab == "📦 Pend. Retirada":
-        # ... (Mantido o código anterior para Pend. Retirada)
-        pass
+        for _, row in df[df['status'] == 'Separada'].iterrows():
+            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
+                if es_admin:
+                    with st.form(f"ret_{row['id']}"):
+                        quem = st.text_input("Quem retirou?")
+                        if st.form_submit_button("Confirmar"):
+                            sheet.update(range_name=f"E{sheet.find(str(row['id']), in_column=1).row}:H{sheet.find(str(row['id']), in_column=1).row}", 
+                                         values=[[datetime.now().strftime("%Y-%m-%d %H:%M:%S"), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
+                            recarregar_dados()
+
     elif nome_tab == "➕ Nova RM":
-        # ... (Mantido o código anterior para Nova RM)
-        pass
+        with st.form("cad", clear_on_submit=True):
+            num = st.text_input("RM (8 dígitos)", max_chars=8)
+            sol = st.text_input("Solicitante")
+            if st.form_submit_button("Cadastrar"):
+                if len(num) != 8 or not num.isdigit():
+                    st.error("Erro: A RM deve conter exatamente 8 dígitos numéricos.")
+                elif not sol:
+                    st.error("Erro: O campo Solicitante é obrigatório.")
+                elif str(num) in df['numero_rm'].astype(str).values:
+                    st.warning("Atenção: Esta RM já está cadastrada e em processo de separação!")
+                else:
+                    sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
+                    st.success("RM cadastrada com sucesso!")
+                    recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
         st.subheader("🔍 Consultar RM")
-        # Campo com limite de caracteres
-        busca = st.text_input("Digite a RM (8 dígitos):", max_chars=8)
-        
+        lista_rms = df['numero_rm'].astype(str).tolist()
+        busca = st.selectbox("Selecione a RM:", [""] + lista_rms)
         if st.button("Pesquisar"):
-            if len(busca) != 8 or not busca.isdigit():
-                st.error("Erro: A RM deve conter exatamente 8 dígitos numéricos.")
-            else:
+            if busca:
                 res = df[df['numero_rm'].astype(str) == str(busca).strip()]
                 if not res.empty:
                     rm = res.iloc[0]
@@ -101,8 +151,7 @@ def mostrar_conteudo(nome_tab):
                             st.write("Status: 🟡 **Separada aguardando retirada**")
                         else:
                             st.write(f"Status: **{rm['status']}**")
-                else: 
-                    st.warning("RM não encontrada.")
+                else: st.warning("RM não encontrada.")
 
     elif nome_tab == "📊 Histórico":
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
