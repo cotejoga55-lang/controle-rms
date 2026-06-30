@@ -70,7 +70,7 @@ with tabs[0]:
     if not cobrancas.empty:
         with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
             for _, row in cobrancas.iterrows():
-                st.warning(f"O NÚMERO DA RM {row['numero_rm']} FOI COBRADA !")
+                st.warning(f"RM {row['numero_rm']} COBRADA!")
                 if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
                     sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
                     st.rerun()
@@ -82,12 +82,14 @@ with tabs[0]:
     c3.metric("Total", len(df))
     st.divider()
     
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
     meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
-    opcoes = [f"{m.month}/{m.year}" for m in meses_disponiveis]
+    opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
     mes_escolhido = st.selectbox("Mês:", opcoes)
     if mes_escolhido:
-        partes = mes_escolhido.split("/")
-        m_num, ano = int(partes[0]), int(partes[1])
+        partes = mes_escolhido.split(" - ")
+        m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
+        ano = int(partes[1])
         c_r1, c_r2 = st.columns(2)
         c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
         c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
@@ -135,9 +137,11 @@ with tabs[idx_consulta]:
                 else: st.write(f"RM: {rm['numero_rm']} | Status: {rm['status']}")
 
 with tabs[idx_historico]:
-    st.subheader("📊 Histórico Completo")
+    st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
     col_esq, col_centro, col_dir = st.columns([1, 8, 1])
     with col_centro:
+        # Centralizando dados via CSS injetado
+        st.markdown("""<style>table{margin-left: auto; margin-right: auto; text-align: center;}</style>""", unsafe_allow_html=True)
         st.dataframe(df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']], use_container_width=True)
         if es_admin:
             with st.form("d"):
