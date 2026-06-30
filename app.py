@@ -117,9 +117,9 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
-                # Mensagem para copiar
-                msg_copiar = f"Oii, @{row.get('wwid', 'WWID')}\n\nSua RM ({row['numero_rm']}) foi separada, por favor vir retirar na área da expedição.\nPriorizar retirar dentro das 72 horas que é o tempo que podemos armazenar a RM conosco.\n\nAtt,"
-                st.code(msg_copiar, language="text")
+                if st.button(f"📋 Copiar mensagem - RM {row['numero_rm']}", key=f"btn_copia_{row['id']}"):
+                    msg_copiar = f"Oii, @{row.get('wwid', 'WWID')}\n\nSua RM ({row['numero_rm']}) foi separada, por favor vir retirar na área da expedição.\nPriorizar retirar dentro das 72 horas que é o tempo que podemos armazenar a RM conosco.\n\nAtt,"
+                    st.code(msg_copiar, language="text")
                 if es_admin:
                     with st.form(f"ret_{row['id']}"):
                         quem = st.text_input("Quem retirou?")
@@ -160,6 +160,7 @@ def mostrar_conteudo(nome_tab):
                         else:
                             st.write(f"Status: **{rm['status']}**")
                 else: st.warning("RM não encontrada.")
+            else: st.error("A RM deve conter exatamente 8 dígitos numéricos.")
 
     elif nome_tab == "📊 Histórico":
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
