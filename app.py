@@ -40,6 +40,7 @@ if st.session_state['perfil_logado'] is None:
                     if usuario == "pdc" and senha == "123": st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234": st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
+            st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
@@ -66,10 +67,22 @@ def mostrar_conteudo(nome_tab):
                     st.warning(f"{row['cobranca']} na RM {row['numero_rm']}!")
                     if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
                         sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, ""); st.rerun()
+        
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
+        st.divider()
+        
+        # Métricas de Prazo (72h) no Dashboard
+        df_sep = df[df['status'] == 'Separada'].copy()
+        df_sep['data_retirada'] = pd.to_datetime(df_sep['data_retirada'])
+        agora = obter_hora_brasil()
+        dentro_prazo = df_sep[(agora - df_sep['data_retirada']) <= timedelta(hours=72)]
+        fora_prazo = df_sep[(agora - df_sep['data_retirada']) > timedelta(hours=72)]
+        cp1, cp2 = st.columns(2)
+        cp1.metric("Dentro do prazo (72h)", len(dentro_prazo))
+        cp2.metric("Fora do prazo (>72h)", len(fora_prazo))
         st.divider()
         
         nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
@@ -81,21 +94,10 @@ def mostrar_conteudo(nome_tab):
             m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
             ano = int(partes[1])
             c_r1, c_r2 = st.columns(2)
-            c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
-            c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
+            c_r1.metric("Separadas no Mês", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
+            c_r2.metric("Retiradas no Mês", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
 
     elif nome_tab == "📋 Painel":
-        # Contador de prazos
-        df_sep = df[df['status'] == 'Separada'].copy()
-        df_sep['data_retirada'] = pd.to_datetime(df_sep['data_retirada'])
-        agora = obter_hora_brasil()
-        dentro_prazo = df_sep[(agora - df_sep['data_retirada']) <= timedelta(hours=72)]
-        fora_prazo = df_sep[(agora - df_sep['data_retirada']) > timedelta(hours=72)]
-        c_p1, c_p2 = st.columns(2)
-        c_p1.metric("Dentro do prazo (72h)", len(dentro_prazo))
-        c_p2.metric("Fora do prazo (>72h)", len(fora_prazo))
-        st.divider()
-
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
                 b1, b2, b3, b4 = st.columns(4)
@@ -151,7 +153,19 @@ def mostrar_conteudo(nome_tab):
             else: st.warning("Não encontrada.")
 
     elif nome_tab == "📊 Histórico":
-        st.table(df[['numero_rm', 'status', 'quem_retirou']])
+        st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
+        col_c = st.columns([1, 8, 1])[1]
+        with col_c:
+            df_hist = df.copy()
+            if not es_admin: df_hist = df_hist[df_hist['status'] == 'Concluída']
+            st.markdown(f"<div style='text-align: center;'>{df_hist[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente').to_html(index=False)}</div>", unsafe_allow_html=True)
+            if es_admin:
+                with st.form("d"):
+                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
+                    if st.form_submit_button("🗑️ Deletar"):
+                        for i, s in sel.items():
+                            if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
+                        recarregar_dados()
 
 for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
     with tabs[i]: mostrar_conteudo(nome)
