@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import time
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
@@ -44,6 +45,12 @@ if st.session_state['perfil_logado'] is None:
             st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
+
+# Auto-refresh a cada 30 segundos
+if 'last_refresh' not in st.session_state: st.session_state['last_refresh'] = time.time()
+if time.time() - st.session_state['last_refresh'] > 30:
+    st.session_state['last_refresh'] = time.time()
+    st.rerun()
 
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
