@@ -96,7 +96,7 @@ with tabs[0]:
 
 with tabs[1]:
     for _, row in df[df['status'] == 'Aberta'].iterrows():
-        with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
+        with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
             if st.button("🔔 Cobrar", key=f"cobrar_{row['id']}"):
                 sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "COBRADO")
                 st.rerun()
@@ -140,13 +140,10 @@ with tabs[idx_historico]:
     st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
     col_esq, col_centro, col_dir = st.columns([1, 8, 1])
     with col_centro:
-        # Prepara o dataframe substituindo vazios por "Pendente"
         df_hist = df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].copy()
         df_hist[['data_retirada', 'quem_retirou']] = df_hist[['data_retirada', 'quem_retirou']].fillna("Pendente")
-        
         tabela_html = df_hist.to_html(classes="table table-striped", index=False, justify="center")
         st.markdown(f"<div style='text-align: center;'>{tabela_html}</div>", unsafe_allow_html=True)
-        
         if es_admin:
             with st.form("d"):
                 sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"d_{r['id']}") for _, r in df.iterrows()}
