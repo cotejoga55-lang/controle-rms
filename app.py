@@ -123,4 +123,40 @@ if es_admin:
 
 # --- ABA 4: CONSULTA ---
 with tabs[idx_consulta]:
-    st.subheader("🔍
+    st.subheader("🔍 Consultar Status")
+    busca = st.text_input("Nº da RM:", key="input_busca")
+    if st.button("Pesquisar", key="btn_pesq"):
+        res = df[df['numero_rm'].astype(str) == str(busca).strip()]
+        if not res.empty:
+            rm = res.iloc[0]
+            val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
+            
+            with st.popover("Detalhes da RM", use_container_width=True):
+                if rm['status'] == 'Aberta':
+                    st.warning("⚠️ STATUS: ABERTA")
+                    st.markdown("### AGUARDANDO SEPARAÇÃO.")
+                    st.write(f"**RM:** {rm['numero_rm']}")
+                else:
+                    st.write(f"**RM:** {val(rm['numero_rm'])}")
+                    st.write(f"**SOLICITANTE:** {val(rm['solicitante'])}")
+                    st.write(f"**DATA SEPARAÇÃO:** {val(rm['data_entrada'])}")
+                    st.write(f"**DATA RETIRADA:** {val(rm['data_retirada'])}")
+                    st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
+                    st.write(f"**STATUS:** {val(rm['status'])}")
+        else:
+            st.error("RM não encontrada.")
+
+# --- ABA 5: HISTÓRICO ---
+with tabs[idx_historico]:
+    st.subheader("📊 Histórico Completo")
+    st.dataframe(df, use_container_width=True)
+    if es_admin:
+        st.divider()
+        with st.form("form_deletar"):
+            selecoes = {row['id']: st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']}", key=f"del_{row['id']}") for _, row in df.iterrows()}
+            if st.form_submit_button("🗑️ Deletar Selecionados"):
+                for id_rm, sel in selecoes.items():
+                    if sel:
+                        cell = sheet.find(str(id_rm), in_column=1)
+                        sheet.delete_rows(cell.row)
+                recarregar_dados()
