@@ -6,13 +6,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
-# Função de conexão mantida
+# Função de conexão
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
+# Métodos manuais (sem pytz)
 def obter_hora_brasil():
     return datetime.utcnow() - timedelta(hours=3)
 
@@ -28,6 +29,7 @@ def formatar_status_tempo(data_entrada, status):
     if diferenca > timedelta(hours=24): return f"🔴 **ATRASADA (>24h)**"
     else: return f"🟢 **NO PRAZO**"
 
+# Lógica de Login
 if 'perfil_logado' not in st.session_state: st.session_state['perfil_logado'] = None
 if st.session_state['perfil_logado'] is None:
     col_meio = st.columns([2, 1, 2])[1]
@@ -43,6 +45,7 @@ if st.session_state['perfil_logado'] is None:
                     else: st.error("Usuário ou senha inválidos.")
     st.stop()
 
+# Carregamento e Processamento de Dados
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
@@ -50,13 +53,15 @@ df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
+# Barra Lateral
 with st.sidebar:
     st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
-    if st.button("🚪 Sair"): st.session_state['perfil_logado'] = None; st.rerun()
+    if st.button("🚪 Sair", key="btn_sair_fixed"): st.session_state['perfil_logado'] = None; st.rerun()
 
 st.title("📦 Sistema de Controle de RMs")
 tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
 
+# Função de renderização com chaves únicas protegidas
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
         c1, c2, c3 = st.columns(3)
@@ -74,21 +79,19 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
-            # Chaves únicas com prefixo no expander
+            # A chave é baseada no id da RM que nunca muda
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
                 b1, b2, b3 = st.columns(3)
                 with b1:
                     with st.popover("🔔 Cobrar"):
-                        # Chave única para o input de cobrança
-                        nome = st.text_input("Quem está cobrando?", key=f"cob_txt_{row['id']}")
-                        if st.button("Confirmar", key=f"btn_cob_{row['id']}"):
+                        nome = st.text_input("Quem está cobrando?", key=f"cob_input_{row['id']}")
+                        if st.button("Confirmar", key=f"btn_cob_conf_{row['id']}"):
                             sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, f"{nome} está cobrando"); st.rerun()
                 if es_admin and row['status'] == 'Aberta':
                     if b2.button(f"⚠️ Em Separação", key=f"btn_sep_em_{row['id']}"):
                         sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
                 if es_admin and b3.button(f"✅ Separada", key=f"btn_sep_final_{row['id']}"):
                     row_idx = sheet.find(str(row['id']), in_column=1).row
-                    # REGISTRA DATA NO CLIQUE
                     sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), "Separada", "", ""]])
                     recarregar_dados()
 
@@ -100,8 +103,8 @@ def mostrar_conteudo(nome_tab):
                 if diff > timedelta(hours=72): st.error(msg)
                 else: st.success(msg)
                 if es_admin:
-                    with st.form(f"form_ret_{row['id']}"): # Chave única para o formulário
-                        quem = st.text_input("Quem retirou?", key=f"ret_in_{row['id']}")
+                    with st.form(key=f"form_ret_{row['id']}"):
+                        quem = st.text_input("Quem retirou?", key=f"in_quem_{row['id']}")
                         if st.form_submit_button("Confirmar"):
                             row_idx = sheet.find(str(row['id']), in_column=1).row
                             sheet.update(range_name=f"F{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
@@ -113,13 +116,13 @@ def mostrar_conteudo(nome_tab):
         with col_c:
             st.markdown(f"<div style='text-align: center;'>{df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente').to_html(index=False)}</div>", unsafe_allow_html=True)
             if es_admin:
-                with st.form("form_delete"): # Chave única
-                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"del_chk_{r['id']}") for _, r in df.iterrows()}
+                with st.form(key="form_delete_hist"):
+                    sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"chk_del_{r['id']}") for _, r in df.iterrows()}
                     if st.form_submit_button("🗑️ Deletar"):
                         for i, s in sel.items():
                             if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
                         recarregar_dados()
 
-# Renderização final
+# Renderização das abas usando o mapeamento correto
 for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
     with tabs[i]: mostrar_conteudo(nome)
