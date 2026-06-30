@@ -13,7 +13,6 @@ def conectar_banco():
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
 def obter_hora_brasil():
-    # Ajuste manual de -3 horas em relação ao UTC (Horário de Brasília)
     return datetime.utcnow() - timedelta(hours=3)
 
 def recarregar_dados():
@@ -41,6 +40,8 @@ if st.session_state['perfil_logado'] is None:
                     if usuario == "pdc" and senha == "123": st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234": st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
+            st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
 sheet = conectar_banco()
@@ -70,6 +71,19 @@ def mostrar_conteudo(nome_tab):
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
+        st.divider()
+        
+        nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+        meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+        opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
+        mes_escolhido = st.selectbox("Mês:", opcoes)
+        if mes_escolhido:
+            partes = mes_escolhido.split(" - ")
+            m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
+            ano = int(partes[1])
+            c_r1, c_r2 = st.columns(2)
+            c_r1.metric("Separadas", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
+            c_r2.metric("Retiradas", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
 
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
@@ -103,11 +117,10 @@ def mostrar_conteudo(nome_tab):
                     diff = obter_hora_brasil() - row['data_retirada']
                     if diff > timedelta(hours=72): st.error("⚠️ RM separada a mais de 72 horas")
                     else: st.success("🟢 Dentro do prazo (72h)")
-                
                 if es_admin:
                     with st.form(f"ret_{row['id']}"):
                         quem = st.text_input("Quem retirou?")
-                        if st.form_submit_button("Confirmar Retirada"):
+                        if st.form_submit_button("Confirmar"):
                             row_idx = sheet.find(str(row['id']), in_column=1).row
                             sheet.update(range_name=f"E{row_idx}:H{row_idx}", values=[[obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), obter_hora_brasil().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
                             recarregar_dados()
