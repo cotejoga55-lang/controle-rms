@@ -57,8 +57,7 @@ def mostrar_conteudo(nome_tab):
                 for _, row in cobrancas.iterrows():
                     st.warning(f"{row['cobranca']} esta RM!")
                     if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
-                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
-                        st.rerun()
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, ""); st.rerun()
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
@@ -67,24 +66,25 @@ def mostrar_conteudo(nome_tab):
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
             with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {formatar_status_tempo(row['data_entrada'], row['status'])}"):
-                c1, c2, c3, c4 = st.columns(4)
-                with c1:
+                cols = st.columns(4)
+                with cols[0]:
                     with st.popover("🔔 Cobrar"):
                         nome = st.text_input("Quem está cobrando?", key=f"cob_{row['id']}")
                         if st.button("Confirmar", key=f"btn_c_{row['id']}"):
                             sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, f"{nome} está cobrando")
                             st.rerun()
-                with c2:
+                with cols[1]:
+                    if es_admin and row['status'] == 'Aberta':
+                        if st.button(f"⚠️ Em Separação", key=f"em_{row['id']}"):
+                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
+                with cols[2]:
+                    if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada"); recarregar_dados()
+                with cols[3]:
                     with st.popover("☁️ Comentários"):
                         com = st.text_area("Obs:", value=row.get('comentario', ''), key=f"com_{row['id']}")
                         if st.button("Salvar", key=f"save_{row['id']}"):
-                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 11, com)
-                            st.rerun()
-                if es_admin and row['status'] == 'Aberta':
-                    if st.button(f"⚠️ Em Separação", key=f"em_{row['id']}"):
-                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Em Separação"); recarregar_dados()
-                if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
-                    sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 8, "Separada"); recarregar_dados()
+                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 11, com); st.rerun()
 
     elif nome_tab == "📦 Pend. Retirada":
         for _, row in df[df['status'] == 'Separada'].iterrows():
