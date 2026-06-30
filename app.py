@@ -114,7 +114,7 @@ with tabs[1]:
             else:
                 st.write("Apenas Administradores podem concluir.")
 
-# --- ABA: NOVA RM (Com validação de 8 dígitos) ---
+# --- ABA: NOVA RM ---
 if es_admin:
     with tabs[2]:
         with st.form("form_cadastro", clear_on_submit=True):
@@ -129,7 +129,7 @@ if es_admin:
                 else:
                     st.error("Erro: O número da RM deve conter exatamente 8 dígitos numéricos.")
 
-# --- ABA: CONSULTA ---
+# --- ABA: CONSULTA (Atualizada com detalhes) ---
 with tabs[idx_consulta]:
     st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
@@ -137,9 +137,18 @@ with tabs[idx_consulta]:
         df_str = df.copy()
         df_str['numero_rm_str'] = df_str['numero_rm'].astype(str).str.strip()
         res = df_str[df_str['numero_rm_str'] == str(busca).strip()]
+        
         if not res.empty:
+            rm = res.iloc[0]
+            # Validação do campo (se vazio, coloca PENDENTE)
+            val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
+            
             with st.popover("Ver Detalhes", use_container_width=True):
-                st.write(f"**RM:** {res.iloc[0]['numero_rm']} | **Status:** {res.iloc[0]['status']}")
+                st.write(f"**RM:** {val(rm['numero_rm'])}")
+                st.write(f"**SOLICITANTE:** {val(rm['solicitante'])}")
+                st.write(f"**DATA DA SEPARAÇÃO:** {val(rm['data_entrada'])}")
+                st.write(f"**DATA DA RETIRADA:** {val(rm['data_retirada'])}")
+                st.write(f"**STATUS:** {val(rm['status'])}")
         else:
             st.error("RM não encontrada.")
 
