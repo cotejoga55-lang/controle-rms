@@ -4,7 +4,7 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES E CONEXÃO ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 def conectar_banco():
@@ -22,14 +22,15 @@ if 'perfil_logado' not in st.session_state:
     st.session_state['perfil_logado'] = None
 
 if st.session_state['perfil_logado'] is None:
-    col_meio = st.columns([2, 1, 2])[1]
+    col1, col_meio, col3 = st.columns([2, 1, 2])
     with col_meio:
         with st.container(border=True):
             st.markdown("<h3 style='text-align: center;'>🔑 Login</h3>", unsafe_allow_html=True)
             with st.form("login_form"):
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
-                if st.form_submit_button("Entrar", use_container_width=True):
+                entrar = st.form_submit_button("Entrar", use_container_width=True)
+                if entrar:
                     if usuario == "pdc" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"
                         st.rerun()
@@ -40,20 +41,29 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- DADOS ---
+# --- LÓGICA E DADOS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
-# --- ABAS (Mantendo a estrutura com a nova aba) ---
+# --- SIDEBAR (Mantido aqui como você pediu!) ---
+with st.sidebar:
+    st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
+    if st.button("🚪 Sair"):
+        st.session_state['perfil_logado'] = None
+        st.rerun()
+
+st.title("📦 Sistema de Controle de RMs")
+
+# Definição dinâmica das abas
 if es_admin:
-    tabs = st.tabs(["📊 Dashboard", "📋 Aberto", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
+    tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 4, 5
 else:
-    tabs = st.tabs(["📊 Dashboard", "📋 Aberto", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
+    tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASHBOARD (Mantido como estava) ---
+# --- ABA: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
     c1, c2, c3 = st.columns(3)
@@ -73,6 +83,7 @@ with tabs[0]:
     opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
     
     mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    
     if mes_escolhido:
         partes = mes_escolhido.split(" - ")
         mes_nome, ano = partes[0], int(partes[1])
@@ -80,22 +91,25 @@ with tabs[0]:
         
         separadas_dash = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
         retiradas_dash = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
+        
         c_r1, c_r2 = st.columns(2)
         c_r1.metric("Total Separadas", len(separadas_dash))
         c_r2.metric("Total Retiradas", len(retiradas_dash))
 
-# --- ABA 1: ABERTO (Para separar) ---
+# --- ABA: PAINEL (Aberto -> Separar) ---
 with tabs[1]:
-    st.subheader("RMs para Separar")
+    st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
-                if st.button("✅ Marcar como SEPARADA", key=f"sep_{row['id']}"):
+                if st.button(f"✅ Marcar como SEPARADA", key=f"sep_{row['id']}"):
                     cell = sheet.find(str(row['id']), in_column=1)
                     sheet.update_cell(cell.row, 8, "Separada")
                     recarregar_dados()
+            else:
+                st.write("Apenas Administradores podem separar.")
 
-# --- ABA 2: PENDENTE DE RETIRADA (Nova) ---
+# --- ABA: PEND. RETIRADA (Separada -> Concluída) ---
 with tabs[2]:
     st.subheader("RMs Separadas - Aguardando Retirada")
     for _, row in df[df['status'] == 'Separada'].iterrows():
@@ -108,20 +122,25 @@ with tabs[2]:
                         cell = sheet.find(str(row['id']), in_column=1)
                         sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
                         recarregar_dados()
+            else:
+                st.write("Apenas Administradores podem concluir.")
 
-# --- ABA 3: NOVA RM ---
+# --- ABA: NOVA RM ---
 if es_admin:
     with tabs[3]:
         with st.form("form_cadastro", clear_on_submit=True):
-            num = st.text_input("RM (8 dígitos)", max_chars=8)
+            num = st.text_input("Número da RM (8 dígitos)", max_chars=8)
             sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
                 if len(num) == 8 and num.isdigit():
                     novo_id = max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1
                     sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
+                    st.success("Cadastrado com sucesso!")
                     recarregar_dados()
+                else:
+                    st.error("Erro: RM deve ter 8 dígitos numéricos.")
 
-# --- ABA: CONSULTA (Mantida com detalhes) ---
+# --- ABA: CONSULTA ---
 with tabs[idx_consulta]:
     st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
@@ -130,10 +149,11 @@ with tabs[idx_consulta]:
         if not res.empty:
             rm = res.iloc[0]
             val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
-            with st.popover("Detalhes", use_container_width=True):
-                st.write(f"**RM:** {val(rm['numero_rm'])} | **SOLICITANTE:** {val(rm['solicitante'])}")
-                st.write(f"**DATA SEPARAÇÃO:** {val(rm['data_entrada'])}")
-                st.write(f"**DATA RETIRADA:** {val(rm['data_retirada'])}")
+            with st.popover("Ver Detalhes", use_container_width=True):
+                st.write(f"**RM:** {val(rm['numero_rm'])}")
+                st.write(f"**SOLICITANTE:** {val(rm['solicitante'])}")
+                st.write(f"**DATA DA SEPARAÇÃO:** {val(rm['data_entrada'])}")
+                st.write(f"**DATA DA RETIRADA:** {val(rm['data_retirada'])}")
                 st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
                 st.write(f"**STATUS:** {val(rm['status'])}")
         else:
