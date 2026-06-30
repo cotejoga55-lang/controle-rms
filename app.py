@@ -3,14 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import time
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
-
-# Script para recarregar a página a cada 10 segundos de forma silenciosa
-st.markdown("""
-    <meta http-equiv="refresh" content="10">
-""", unsafe_allow_html=True)
 
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -72,10 +66,8 @@ else:
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
-        # Recarrega dados aqui para garantir que o painel pegue a cobrança do outro celular
-        df_fresh = pd.DataFrame(sheet.get_all_records())
-        cobrancas = df_fresh[df_fresh['cobranca'] == 'COBRADO']
-        
+        df_raw = pd.DataFrame(sheet.get_all_records())
+        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
         if not cobrancas.empty:
             with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
                 for _, row in cobrancas.iterrows():
@@ -84,7 +76,6 @@ def mostrar_conteudo(nome_tab):
                         sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
                         st.rerun()
         else: st.write("🔔 Sem novas cobranças.")
-        
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
