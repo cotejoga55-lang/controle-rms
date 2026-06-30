@@ -172,4 +172,3 @@ else:
 
 for i, nome in enumerate(nomes):
     with tabs[i]: mostrar_conteudo(nome)
-    
