@@ -65,6 +65,20 @@ def mostrar_conteudo(nome_tab):
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
+        st.divider()
+        
+        # RESTAURADO: Filtro Mensal
+        nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+        meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+        opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
+        mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+        if mes_escolhido:
+            partes = mes_escolhido.split(" - ")
+            m_num = list(nomes_meses.values()).index(partes[0].upper()) + 1
+            ano = int(partes[1])
+            c_r1, c_r2 = st.columns(2)
+            c_r1.metric("Separadas no Mês", len(df[(df['data_entrada'].dt.month == m_num) & (df['data_entrada'].dt.year == ano)]))
+            c_r2.metric("Retiradas no Mês", len(df[(df['data_retirada'].dt.month == m_num) & (df['data_retirada'].dt.year == ano)]))
 
     elif nome_tab == "📋 Painel":
         for _, row in df[df['status'].isin(['Aberta', 'Em Separação'])].iterrows():
@@ -82,7 +96,6 @@ def mostrar_conteudo(nome_tab):
                 with b3:
                     if es_admin and st.button(f"✅ Separada", key=f"sep_{row['id']}"):
                         row_idx = sheet.find(str(row['id']), in_column=1).row
-                        # REGISTRA DATA ATUAL NA COLUNA DE SAÍDA (Coluna E)
                         sheet.update_cell(row_idx, 5, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                         sheet.update_cell(row_idx, 8, "Separada"); recarregar_dados()
                 with b4:
