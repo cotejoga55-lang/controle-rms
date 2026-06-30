@@ -123,32 +123,4 @@ if es_admin:
 
 # --- ABA 4: CONSULTA ---
 with tabs[idx_consulta]:
-    busca = st.text_input("Nº da RM:", key="input_busca")
-    if st.button("Pesquisar", key="btn_pesq"):
-        res = df[df['numero_rm'].astype(str) == str(busca).strip()]
-        if not res.empty:
-            rm = res.iloc[0]
-            val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
-            with st.popover("Detalhes", use_container_width=True):
-                st.write(f"**RM:** {val(rm['numero_rm'])} | **STATUS:** {val(rm['status'])}")
-                st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
-
-# --- ABA 5: HISTÓRICO COM CHECKBOX DELETAR ---
-with tabs[idx_historico]:
-    st.subheader("📊 Histórico Completo")
-    st.dataframe(df, use_container_width=True)
-    
-    if es_admin:
-        st.divider()
-        st.subheader("🗑️ Gerenciamento de Exclusão")
-        with st.form("form_deletar"):
-            selecoes = {}
-            for index, row in df.iterrows():
-                selecoes[row['id']] = st.checkbox(f"RM: {row['numero_rm']} | ID: {row['id']}", key=f"del_{row['id']}")
-            
-            if st.form_submit_button("🗑️ Deletar Selecionados"):
-                ids_deletar = [id_rm for id_rm, sel in selecoes.items() if sel]
-                for id_rm in ids_deletar:
-                    cell = sheet.find(str(id_rm), in_column=1)
-                    sheet.delete_rows(cell.row)
-                recarregar_dados()
+    st.subheader("🔍
