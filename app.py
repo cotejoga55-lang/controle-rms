@@ -7,6 +7,15 @@ import time
 
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
+# Script para forçar recarregamento do navegador a cada 30 segundos
+st.markdown("""
+    <script>
+        setTimeout(function(){
+           window.location.reload(1);
+        }, 30000);
+    </script>
+""", unsafe_allow_html=True)
+
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
@@ -46,12 +55,6 @@ if st.session_state['perfil_logado'] is None:
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
-# Auto-refresh
-if 'last_refresh' not in st.session_state: st.session_state['last_refresh'] = time.time()
-if time.time() - st.session_state['last_refresh'] > 30:
-    st.session_state['last_refresh'] = time.time()
-    st.rerun()
-
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
@@ -73,18 +76,16 @@ else:
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
-        placeholder = st.empty()
-        with placeholder.container():
-            df_raw = pd.DataFrame(sheet.get_all_records())
-            cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
-            if not cobrancas.empty:
-                with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
-                    for _, row in cobrancas.iterrows():
-                        st.warning(f"RM {row['numero_rm']} COBRADA!")
-                        if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
-                            sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
-                            st.rerun()
-            else: st.write("🔔 Sem novas cobranças.")
+        df_raw = pd.DataFrame(sheet.get_all_records())
+        cobrancas = df_raw[df_raw['cobranca'] == 'COBRADO']
+        if not cobrancas.empty:
+            with st.popover(f"🔔 NOTIFICAÇÕES ({len(cobrancas)})"):
+                for _, row in cobrancas.iterrows():
+                    st.warning(f"RM {row['numero_rm']} COBRADA!")
+                    if st.button(f"Limpar {row['numero_rm']}", key=f"clr_{row['id']}"):
+                        sheet.update_cell(sheet.find(str(row['id']), in_column=1).row, 9, "")
+                        st.rerun()
+        else: st.write("🔔 Sem novas cobranças.")
         
         c1, c2, c3 = st.columns(3)
         c1.metric("Aberto", len(df[df['status'] == 'Aberta']))
