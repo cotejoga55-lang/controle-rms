@@ -117,10 +117,19 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "➕ Nova RM":
         with st.form("cad", clear_on_submit=True):
-            num = st.text_input("RM", max_chars=8); sol = st.text_input("Solicitante")
+            num = st.text_input("RM (8 dígitos)", max_chars=8)
+            sol = st.text_input("Solicitante")
             if st.form_submit_button("Cadastrar"):
-                sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
-                recarregar_dados()
+                if len(num) != 8 or not num.isdigit():
+                    st.error("Erro: A RM deve conter exatamente 8 dígitos numéricos.")
+                elif not sol:
+                    st.error("Erro: O campo Solicitante é obrigatório.")
+                elif str(num) in df['numero_rm'].astype(str).values:
+                    st.warning("Atenção: Esta RM já está cadastrada e em processo de separação!")
+                else:
+                    sheet.append_row([max([int(r['id']) for r in sheet.get_all_records() if str(r['id']).isdigit()] + [0]) + 1, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta", ""])
+                    st.success("RM cadastrada com sucesso!")
+                    recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
         busca = st.text_input("RM:", key="b")
