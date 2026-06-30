@@ -81,6 +81,7 @@ def mostrar_conteudo(nome_tab):
         c2.metric("Concluída", len(df[df['status'] == 'Concluída']))
         c3.metric("Total", len(df))
         st.divider()
+        
         nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
         meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
         opcoes = [f"{nomes_meses[m.month].capitalize()} - {m.year}" for m in meses_disponiveis]
@@ -111,7 +112,7 @@ def mostrar_conteudo(nome_tab):
                         quem = st.text_input("Quem retirou?")
                         if st.form_submit_button("Confirmar"):
                             sheet.update(range_name=f"E{sheet.find(str(row['id']), in_column=1).row}:H{sheet.find(str(row['id']), in_column=1).row}", 
-                                        values=[[datetime.now().strftime("%Y-%m-%d %H:%M:%S"), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
+                                         values=[[datetime.now().strftime("%Y-%m-%d %H:%M:%S"), datetime.now().strftime("%Y-%m-%d %H:%M:%S"), quem, "Concluída"]])
                             recarregar_dados()
 
     elif nome_tab == "➕ Nova RM":
@@ -132,11 +133,9 @@ def mostrar_conteudo(nome_tab):
 
     elif nome_tab == "🔍 Consulta":
         st.subheader("🔍 Consultar RM")
-        # Filtra a lista do selectbox para apenas itens com 8 dígitos
-        lista_rms = df[df['numero_rm'].astype(str).str.len() == 8]['numero_rm'].astype(str).unique().tolist()
-        busca = st.selectbox("Selecione a RM:", [""] + sorted(lista_rms))
+        busca = st.text_input("Digite a RM (8 dígitos):", max_chars=8)
         if st.button("Pesquisar"):
-            if busca and len(str(busca)) == 8:
+            if busca and len(str(busca)) == 8 and str(busca).isdigit():
                 res = df[df['numero_rm'].astype(str) == str(busca).strip()]
                 if not res.empty:
                     rm = res.iloc[0]
@@ -152,7 +151,7 @@ def mostrar_conteudo(nome_tab):
                         else:
                             st.write(f"Status: **{rm['status']}**")
                 else: st.warning("RM não encontrada.")
-            else: st.error("A RM deve conter exatamente 8 dígitos.")
+            else: st.error("A RM deve conter exatamente 8 dígitos numéricos.")
 
     elif nome_tab == "📊 Histórico":
         st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
