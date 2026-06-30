@@ -36,7 +36,7 @@ if st.session_state['perfil_logado'] is None:
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
                 if st.form_submit_button("Entrar", use_container_width=True):
-                    if usuario == "pdc" and senha == "123":
+                    if usuario == "uj455" and senha == "123":
                         st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234":
                         st.session_state['perfil_logado'] = "Visitante"; st.rerun()
