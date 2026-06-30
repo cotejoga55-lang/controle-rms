@@ -37,8 +37,8 @@ if st.session_state['perfil_logado'] is None:
                     if usuario == "pdc" and senha == "123": st.session_state['perfil_logado'] = "Admin"; st.rerun()
                     elif usuario == "cummins" and senha == "1234": st.session_state['perfil_logado'] = "Visitante"; st.rerun()
                     else: st.error("Usuário ou senha inválidos.")
-            # OBSERVAÇÃO DE LOGIN RESTAURADA
-            st.markdown("<div style='text-align: center;'><small>Se você é um solicitador de RM</small><br><b>usuario: cummins</b><br><b>senha: 1234</b></div>", unsafe_allow_html=True)
+            with st.expander("ℹ️ Precisa de acesso?"):
+                st.markdown("Consulte a sua Rm, segue o perfil para ser utilizado:\n\n**Login:** cummins\n**Senha:** 1234")
     st.markdown("<p style='text-align: center; color: gray;'>Sistema elaborado por Kevin.</p>", unsafe_allow_html=True)
     st.stop()
 
@@ -111,10 +111,10 @@ def mostrar_conteudo(nome_tab):
         for _, row in df[df['status'] == 'Separada'].iterrows():
             tempo_decorrido = datetime.now() - pd.to_datetime(row['data_saida'])
             is_atrasado = tempo_decorrido > timedelta(hours=72)
-            label_semaforo = "🔴 Separada a mais de 72 horas" if is_atrasado else "🟢 Separada recentemente"
-            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {label_semaforo}"):
-                if is_atrasado: st.error(label_semaforo)
-                else: st.success(label_semaforo)
+            label = "🔴 Separada a mais de 72 horas" if is_atrasado else "🟢 Separada recentemente"
+            with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']} | {label}"):
+                if is_atrasado: st.error(label)
+                else: st.success(label)
                 if es_admin:
                     with st.form(key=f"ret_form_{row['id']}"):
                         quem = st.text_input("Quem retirou?", key=f"quem_in_{row['id']}")
