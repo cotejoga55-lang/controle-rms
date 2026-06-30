@@ -45,14 +45,22 @@ if st.session_state['perfil_logado'] is None:
                     else: st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- DADOS ---
+# --- LÓGICA E DADOS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
+# --- BARRA LATERAL (RESTAURADA) ---
+with st.sidebar:
+    st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
+    if st.button("🚪 Sair"):
+        st.session_state['perfil_logado'] = None
+        st.rerun()
+
 st.title("📦 Sistema de Controle de RMs")
+
 if es_admin:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 4, 5
@@ -60,7 +68,7 @@ else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASHBOARD ORIGINAL + SINO ---
+# --- ABA 0: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
     
