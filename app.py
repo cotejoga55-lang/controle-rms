@@ -4,7 +4,7 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- CONFIGURAÇÕES ---
+# --- CONFIGURAÇÕES E CONEXÃO ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 def conectar_banco():
@@ -41,7 +41,7 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- LÓGICA LOGADO ---
+# --- LÓGICA E DADOS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
@@ -54,6 +54,7 @@ with st.sidebar:
 
 st.title("📦 Sistema de Controle de RMs")
 
+# Definição dinâmica das abas
 if es_admin:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
@@ -61,7 +62,7 @@ else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 2, 3
 
-# --- ABA 0: DASHBOARD ---
+# --- ABA: DASHBOARD ---
 with tabs[0]:
     st.subheader("Resumo Operacional")
     c1, c2, c3 = st.columns(3)
@@ -71,29 +72,37 @@ with tabs[0]:
     
     st.divider()
     
-    # --- FILTRO POR MÊS ---
-    st.subheader("🔎 Filtro de Produtividade Mensal")
-    df_concluidas = df[df['status'] == 'Concluída'].copy()
-    df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'], errors='coerce')
-    df_concluidas['mes_ano'] = df_concluidas['data_retirada'].dt.strftime('%m/%Y')
+    st.subheader("🔎 Relatório por Mês")
+    df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
+    df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
     
-    lista_meses = sorted(df_concluidas['mes_ano'].dropna().unique())
-    mes_selecionado = st.selectbox("Selecione o Mês:", ["Todos"] + lista_meses)
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 
+                   7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
     
-    if mes_selecionado == "Todos":
-        total_mes = len(df_concluidas)
-        st.info(f"Total de RMs concluídas no período: **{total_mes}**")
-    else:
-        total_mes = len(df_concluidas[df_concluidas['mes_ano'] == mes_selecionado])
-        st.success(f"RMs concluídas em {mes_selecionado}: **{total_mes}**")
+    meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+    opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
+    
+    mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    
+    if mes_escolhido:
+        partes = mes_escolhido.split(" - ")
+        mes_nome, ano = partes[0], int(partes[1])
+        mes_num = list(nomes_meses.values()).index(mes_nome) + 1
+        
+        separadas = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
+        retiradas = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
+        
+        c_r1, c_r2 = st.columns(2)
+        c_r1.metric("Total Separadas", len(separadas))
+        c_r2.metric("Total Retiradas", len(retiradas))
 
-# --- ABA 1: PAINEL ---
+# --- ABA: PAINEL ---
 with tabs[1]:
     st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
-                if st.button(f"✅ Concluir RM {row['numero_rm']}", key=f"btn_{row['id']}"):
+                if st.button(f"✅ Concluir {row['numero_rm']}", key=f"btn_{row['id']}"):
                     st.session_state[f'concluir_{row["id"]}'] = True
                 if st.session_state.get(f'concluir_{row["id"]}'):
                     with st.form(f"form_{row['id']}"):
@@ -106,7 +115,7 @@ with tabs[1]:
             else:
                 st.write("Apenas Administradores podem concluir.")
 
-# --- ABA 2: NOVA RM ---
+# --- ABA: NOVA RM ---
 if es_admin:
     with tabs[2]:
         with st.form("form_cadastro", clear_on_submit=True):
@@ -120,26 +129,18 @@ if es_admin:
 
 # --- ABA: CONSULTA ---
 with tabs[idx_consulta]:
-    st.subheader("🔍 Consultar Status de RM")
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        busca_rm = st.text_input("Digite o número da RM:", key="input_busca")
-    with c2:
-        st.write("###") 
-        btn_pesquisar = st.button("Pesquisar", key="btn_pesquisar_rm")
-    
-    if btn_pesquisar and busca_rm:
+    st.subheader("🔍 Consultar Status")
+    busca = st.text_input("Nº da RM:", key="input_busca")
+    if st.button("Pesquisar", key="btn_pesq"):
         df_str = df.copy()
         df_str['numero_rm_str'] = df_str['numero_rm'].astype(str).str.strip()
-        resultado = df_str[df_str['numero_rm_str'] == str(busca_rm).strip()]
-        
-        if not resultado.empty:
-            rm = resultado.iloc[0]
+        res = df_str[df_str['numero_rm_str'] == str(busca).strip()]
+        if not res.empty:
             with st.popover("Ver Detalhes", use_container_width=True):
-                st.write(f"**RM:** {rm['numero_rm']} | **Status:** {rm['status']}")
+                st.write(f"**RM:** {res.iloc[0]['numero_rm']} | **Status:** {res.iloc[0]['status']}")
         else:
             st.error("RM não encontrada.")
 
-# --- ABA FINAL: HISTÓRICO ---
+# --- ABA: HISTÓRICO ---
 with tabs[idx_historico]:
     st.dataframe(df, use_container_width=True)
