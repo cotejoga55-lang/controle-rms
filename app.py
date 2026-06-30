@@ -4,7 +4,7 @@ from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- CONFIGURAÇÕES E CONEXÃO ---
+# --- CONFIGURAÇÕES ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 def conectar_banco():
@@ -45,30 +45,57 @@ sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
-# --- ABAS ---
+# --- ABAS (Mantendo a estrutura com a nova aba) ---
 if es_admin:
-    tabs = st.tabs(["📊 Dash", "📋 Aberto", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
+    tabs = st.tabs(["📊 Dashboard", "📋 Aberto", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 4, 5
 else:
-    tabs = st.tabs(["📊 Dash", "📋 Aberto", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
+    tabs = st.tabs(["📊 Dashboard", "📋 Aberto", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
     idx_consulta, idx_historico = 3, 4
 
-# --- ABA 0: DASH ---
+# --- ABA 0: DASHBOARD (Mantido como estava) ---
 with tabs[0]:
-    st.metric("Total de RMs", len(df))
+    st.subheader("Resumo Operacional")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("RMs em Aberto", len(df[df['status'] == 'Aberta']))
+    c2.metric("RMs Concluídas", len(df[df['status'] == 'Concluída']))
+    c3.metric("Total de RMs", len(df))
+    
+    st.divider()
+    st.subheader("🔎 Relatório por Mês")
+    df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
+    df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
+    
+    nomes_meses = {1: 'JANEIRO', 2: 'FEVEREIRO', 3: 'MARÇO', 4: 'ABRIL', 5: 'MAIO', 6: 'JUNHO', 
+                   7: 'JULHO', 8: 'AGOSTO', 9: 'SETEMBRO', 10: 'OUTUBRO', 11: 'NOVEMBRO', 12: 'DEZEMBRO'}
+    
+    meses_disponiveis = sorted(list(set(df['data_entrada'].dt.to_period('M').dropna())))
+    opcoes = [f"{nomes_meses[m.month]} - {m.year}" for m in meses_disponiveis]
+    
+    mes_escolhido = st.selectbox("Selecione o Mês:", opcoes)
+    if mes_escolhido:
+        partes = mes_escolhido.split(" - ")
+        mes_nome, ano = partes[0], int(partes[1])
+        mes_num = list(nomes_meses.values()).index(mes_nome) + 1
+        
+        separadas_dash = df[(df['data_entrada'].dt.month == mes_num) & (df['data_entrada'].dt.year == ano)]
+        retiradas_dash = df[(df['data_retirada'].dt.month == mes_num) & (df['data_retirada'].dt.year == ano)]
+        c_r1, c_r2 = st.columns(2)
+        c_r1.metric("Total Separadas", len(separadas_dash))
+        c_r2.metric("Total Retiradas", len(retiradas_dash))
 
 # --- ABA 1: ABERTO (Para separar) ---
 with tabs[1]:
     st.subheader("RMs para Separar")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
-        with st.expander(f"RM: {row['numero_rm']}"):
+        with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
                 if st.button("✅ Marcar como SEPARADA", key=f"sep_{row['id']}"):
                     cell = sheet.find(str(row['id']), in_column=1)
                     sheet.update_cell(cell.row, 8, "Separada")
                     recarregar_dados()
 
-# --- ABA 2: PENDENTE DE RETIRADA ---
+# --- ABA 2: PENDENTE DE RETIRADA (Nova) ---
 with tabs[2]:
     st.subheader("RMs Separadas - Aguardando Retirada")
     for _, row in df[df['status'] == 'Separada'].iterrows():
@@ -79,7 +106,6 @@ with tabs[2]:
                     if st.form_submit_button("Confirmar Retirada"):
                         agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         cell = sheet.find(str(row['id']), in_column=1)
-                        # Atualiza: Data Retirada, Quem Retirou, Status
                         sheet.update(range_name=f"E{cell.row}:H{cell.row}", values=[[agora, agora, quem, "Concluída"]])
                         recarregar_dados()
 
@@ -95,20 +121,24 @@ if es_admin:
                     sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
                     recarregar_dados()
 
-# --- ABA 4/5: CONSULTA ---
+# --- ABA: CONSULTA (Mantida com detalhes) ---
 with tabs[idx_consulta]:
-    busca = st.text_input("Nº da RM:")
-    if st.button("Pesquisar"):
-        res = df[df['numero_rm'].astype(str) == str(busca)]
+    st.subheader("🔍 Consultar Status")
+    busca = st.text_input("Nº da RM:", key="input_busca")
+    if st.button("Pesquisar", key="btn_pesq"):
+        res = df[df['numero_rm'].astype(str) == str(busca).strip()]
         if not res.empty:
             rm = res.iloc[0]
             val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
-            st.write(f"**RM:** {val(rm['numero_rm'])} | **Status:** {val(rm['status'])}")
-            st.write(f"**SOLICITANTE:** {val(rm['solicitante'])}")
-            st.write(f"**DATA SEPARAÇÃO:** {val(rm['data_entrada'])}")
-            st.write(f"**DATA RETIRADA:** {val(rm['data_retirada'])}")
-            st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
+            with st.popover("Detalhes", use_container_width=True):
+                st.write(f"**RM:** {val(rm['numero_rm'])} | **SOLICITANTE:** {val(rm['solicitante'])}")
+                st.write(f"**DATA SEPARAÇÃO:** {val(rm['data_entrada'])}")
+                st.write(f"**DATA RETIRADA:** {val(rm['data_retirada'])}")
+                st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
+                st.write(f"**STATUS:** {val(rm['status'])}")
+        else:
+            st.error("RM não encontrada.")
 
-# --- ABA FINAL: HISTÓRICO ---
+# --- ABA: HISTÓRICO ---
 with tabs[idx_historico]:
     st.dataframe(df, use_container_width=True)
