@@ -3,8 +3,9 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import plotly.express as px
 
-# --- CONFIGURAÇÃO E CONEXÃO ---
+# --- CONFIGURAÇÕES E CONEXÃO ---
 st.set_page_config(page_title="Controle de RMs", layout="wide")
 
 def conectar_banco():
@@ -17,7 +18,7 @@ def recarregar_dados():
     st.cache_data.clear()
     st.rerun()
 
-# --- LOGIN ---
+# --- INTERFACE E LOGIN ---
 if 'perfil_logado' not in st.session_state: 
     st.session_state['perfil_logado'] = None
 
@@ -41,28 +42,25 @@ if st.session_state['perfil_logado'] is None:
                         st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- LÓGICA LOGADO ---
+# --- LÓGICA E ABAS ---
 sheet = conectar_banco()
 df = pd.DataFrame(sheet.get_all_records())
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
 with st.sidebar:
     st.write(f"👤 Perfil: **{st.session_state['perfil_logado']}**")
-    if st.button("🚪 Sair", key="btn_sair"):
+    if st.button("🚪 Sair"):
         st.session_state['perfil_logado'] = None
         st.rerun()
 
 st.title("📦 Sistema de Controle de RMs")
 
-# Definição dinâmica das abas
 if es_admin:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"])
-    idx_consulta = 3
-    idx_historico = 4
+    idx_consulta, idx_historico = 3, 4
 else:
     tabs = st.tabs(["📊 Dashboard", "📋 Painel", "🔍 Consulta", "📊 Histórico"])
-    idx_consulta = 2
-    idx_historico = 3
+    idx_consulta, idx_historico = 2, 3
 
 # --- ABA 0: DASHBOARD ---
 with tabs[0]:
@@ -74,6 +72,7 @@ with tabs[0]:
     
     st.divider()
     st.subheader("Produtividade Mensal")
+    
     df_concluidas = df[df['status'] == 'Concluída'].copy()
     df_concluidas['data_retirada'] = pd.to_datetime(df_concluidas['data_retirada'], errors='coerce')
     meses_ano = pd.period_range(start='2026-01', end='2026-12', freq='M')
@@ -87,45 +86,21 @@ with tabs[0]:
     dados_finais = dados_agrupados.reindex(meses_ano, fill_value=0)
     dados_finais.index = [m.strftime('%b') for m in dados_finais.index]
     
-    col_left, col_mid, col_right = st.columns([1, 8, 1])
-    with col_mid:
-        st.bar_chart(dados_finais, use_container_width=True, color="#007bff")
-
-# --- ABA 1: PAINEL ---
-import plotly.express as px # Adicione este import no topo do seu código
-
-# ... (dentro da Aba 1, onde você estava montando o gráfico)
-
-    # 5. Exibir gráfico com Plotly (Muito mais elegante)
     fig = px.bar(
-        dados_finais, 
-        x=dados_finais.index, 
-        y=dados_finais.values,
-        labels={'x': 'Mês', 'y': 'RMs Concluídas'},
-        color_discrete_sequence=['#636EFA'] # Azul moderno
+        x=dados_finais.index, y=dados_finais.values,
+        labels={'x': 'Mês', 'y': 'Concluídas'},
+        color_discrete_sequence=['#007bff']
     )
-    
-    # Ajustes finos para ficar bonito e compacto
-    fig.update_layout(
-        margin=dict(l=20, r=20, t=30, b=20), # Remove espaços desnecessários
-        height=300, # Altura fixa ideal para celular
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)'
-    )
-    
-    fig.update_xaxes(showgrid=False)
-    fig.update_yaxes(showgrid=True, gridcolor='lightgray')
-
+    fig.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=300, plot_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
 
-
-
+# --- ABA 1: PAINEL ---
 with tabs[1]:
     st.subheader("Gestão de RMs em Aberto")
     for _, row in df[df['status'] == 'Aberta'].iterrows():
         with st.expander(f"RM: {row['numero_rm']} - {row['solicitante']}"):
             if es_admin:
-                if st.button(f"✅ Concluir {row['numero_rm']}", key=f"btn_{row['id']}"):
+                if st.button(f"✅ Concluir RM {row['numero_rm']}", key=f"btn_{row['id']}"):
                     st.session_state[f'concluir_{row["id"]}'] = True
                 if st.session_state.get(f'concluir_{row["id"]}'):
                     with st.form(f"form_{row['id']}"):
@@ -150,17 +125,25 @@ if es_admin:
                 st.success("Cadastrado!")
                 recarregar_dados()
 
-# --- ABA: CONSULTA (Dinâmica) ---
+# --- ABA: CONSULTA RÁPIDA ---
 with tabs[idx_consulta]:
-    st.subheader("🔍 Consulta")
-    busca = st.text_input("Nº da RM:", key="input_busca")
-    if st.button("Pesquisar", key="btn_pesq"):
+    st.subheader("🔍 Consultar Status de RM")
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        busca_rm = st.text_input("Digite o número da RM:", key="input_busca")
+    with c2:
+        st.write("###") 
+        btn_pesquisar = st.button("Pesquisar", key="btn_pesquisar_rm")
+    
+    if btn_pesquisar and busca_rm:
         df_str = df.copy()
         df_str['numero_rm_str'] = df_str['numero_rm'].astype(str).str.strip()
-        res = df_str[df_str['numero_rm_str'] == str(busca).strip()]
-        if not res.empty:
-            with st.popover("Ver Detalhes"):
-                st.write(f"**RM:** {res.iloc[0]['numero_rm']} | **Status:** {res.iloc[0]['status']}")
+        resultado = df_str[df_str['numero_rm_str'] == str(busca_rm).strip()]
+        
+        if not resultado.empty:
+            rm = resultado.iloc[0]
+            with st.popover("Ver Detalhes", use_container_width=True):
+                st.write(f"**RM:** {rm['numero_rm']} | **Status:** {rm['status']}")
         else:
             st.error("RM não encontrada.")
 
