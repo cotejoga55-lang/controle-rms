@@ -129,18 +129,34 @@ if es_admin:
                     sheet.append_row([novo_id, num, sol, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "", "", "", "Aberta"])
                     recarregar_dados()
 
+# --- ABA 4: CONSULTA ---
 with tabs[idx_consulta]:
     st.subheader("🔍 Consultar Status")
     busca = st.text_input("Nº da RM:", key="input_busca")
-    if st.button("Pesquisar"):
+    
+    if st.button("Pesquisar", key="btn_pesq"):
         res = df[df['numero_rm'].astype(str) == str(busca).strip()]
+        
         if not res.empty:
             rm = res.iloc[0]
-            if rm['status'] == 'Aberta':
-                st.warning("⚠️ STATUS: ABERTA - AGUARDANDO SEPARAÇÃO.")
-            else:
-                st.write(f"**RM:** {rm['numero_rm']} | **STATUS:** {rm['status']}")
-                st.write(f"**QUEM RETIROU:** {rm['quem_retirou']}")
+            val = lambda x: x if (x and str(x).strip() != "") else "PENDENTE"
+            
+            with st.popover("Detalhes da RM", use_container_width=True):
+                if rm['status'] == 'Aberta':
+                    st.warning("⚠️ STATUS: ABERTA - AGUARDANDO SEPARAÇÃO.")
+                    st.write(f"**RM:** {rm['numero_rm']}")
+                    
+                    # Botão de sinalização para o visitante/usuário
+                    if st.button("🔔 Cobrar esta RM", key="btn_cobrar"):
+                        cell = sheet.find(str(rm['id']), in_column=1)
+                        # Atualiza a coluna 9 (I) com o status de COBRADO
+                        sheet.update_cell(cell.row, 9, "COBRADO")
+                        st.success("Cobrança registrada! O setor responsável será notificado.")
+                        st.rerun()
+                
+                else:
+                    st.write(f"**RM:** {val(rm['numero_rm'])} | **STATUS:** {val(rm['status'])}")
+                    st.write(f"**QUEM RETIROU:** {val(rm['quem_retirou'])}")
         else:
             st.error("RM não encontrada.")
 
