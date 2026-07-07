@@ -197,4 +197,5 @@ def mostrar_conteudo(nome_tab):
             else:
                 st.warning("Por favor, selecione ou digite uma RM válida para pesquisar.")
 
-for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊
+for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
+    with tabs[i]: mostrar_conteudo(nome)
