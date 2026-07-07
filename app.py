@@ -188,30 +188,39 @@ if st.session_state.get("nav_rm"):
                         if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
                     recarregar_dados()
 
-# 2. LÓGICA DE SEPARAÇÃO (ESTOQUE GERAL)
 elif st.session_state.get("nav_sep"):
     aba_sep_sel = st.session_state.nav_sep
     st.title(f"🚀 {aba_sep_sel}")
     st.divider()
 
     if aba_sep_sel == "📥 Estoque Geral":
-        st.subheader("📁 Carga de Estoque (10.000 linhas)")
-        txt = st.text_area("Cole os dados (Partnumber | Descrição | Subinventário | Locação | Qtd):", height=300)
-        if st.button("Processar 10k Linhas"):
-            if txt:
-                linhas = [l.split('\t') for l in txt.split('\n') if l.strip()]
-                st.session_state['estoque_geral'] = pd.DataFrame(linhas[1:], columns=linhas[0])
-                st.success(f"Estoque processado! {len(st.session_state['estoque_geral'])} itens carregados.")
+        st.info("Cole os dados (Partnumber | Descrição | Subinventário | Locação | Qtd) abaixo:")
+        txt_input = st.text_area("Colar Dados (Ctrl+V):", height=300, key="txt_estoque_geral")
+        
+        if st.button("Processar Estoque Geral"):
+            if txt_input:
+                linhas = [linha.split('\t') for linha in txt_input.split('\n') if linha.strip()]
+                if linhas:
+                    # Assume a primeira linha como cabeçalho
+                    st.session_state['estoque_geral'] = pd.DataFrame(linhas[1:], columns=linhas[0])
+                    st.success(f"Estoque processado! {len(st.session_state['estoque_geral'])} linhas carregadas.")
+            else:
+                st.warning("O campo de texto está vazio.")
+        
         if not st.session_state['estoque_geral'].empty:
             st.dataframe(st.session_state['estoque_geral'], use_container_width=True)
 
     elif aba_sep_sel == "📑 Emitir Separação":
-        st.subheader("📄 Roteiro de Separação")
+        st.markdown("### 📄 Roteiro de Separação")
+        
         if st.session_state['estoque_geral'].empty:
             st.error("O Estoque Geral está vazio. Carregue os dados na aba '📥 Estoque Geral' primeiro.")
         else:
-            busca = st.text_input("Buscar Partnumber no Estoque:")
+            busca = st.text_input("Buscar Partnumber para o Picklist:")
             if busca:
-                res = st.session_state['estoque_geral'][st.session_state['estoque_geral'].iloc[:, 0].astype(str).str.contains(busca, case=False)]
+                # Busca pelo primeiro termo (Partnumber) independente de maiúsculas
+                res = st.session_state['estoque_geral'][
+                    st.session_state['estoque_geral'].iloc[:, 0].astype(str).str.contains(busca, case=False, na=False)
+                ]
                 st.table(res)
                 st.info("💡 **Dica:** Pressione **Ctrl+P** para imprimir.")
