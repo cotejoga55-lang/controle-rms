@@ -55,18 +55,15 @@ df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
-# Definição do menu com base no perfil logado
 if es_admin:
     opcoes_menu = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"]
 else:
     opcoes_menu = ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
 
-# Construção da Barra Lateral Limpa e Isolada
 with st.sidebar:
     st.markdown(f"### 👤 Perfil: **{st.session_state['perfil_logado']}**")
     st.divider()
-    # O st.radio garante que apenas UMA opção execute por vez
-    aba_selecionada = st.radio("Navegação do Sistema:", opciones_menu, key="navegacao_principal")
+    aba_selecionada = st.radio("Navegação do Sistema:", opcoes_menu, key="navegacao_principal")
     st.divider()
     if st.button("🚪 Sair", key="btn_sair_fixed", use_container_width=True): 
         st.session_state['perfil_logado'] = None
@@ -76,7 +73,6 @@ st.title("📦 Sistema de Controle de RMs")
 st.markdown(f"#### Tela Atual: {aba_selecionada}")
 st.divider()
 
-# Processamento estrito baseado no IF/ELIF - Adeus vazamento de abas!
 if aba_selecionada == "📊 Dashboard":
     avisos = df[df['cobranca'].str.contains("está cobrando|Comentario adicionado", case=False, na=False)]
     if not avisos.empty:
@@ -161,13 +157,9 @@ elif aba_selecionada == "➕ Nova RM":
 elif aba_selecionada == "🔍 Consulta":
     lista_rms = df['numero_rm'].dropna().astype(str).unique().tolist()
     busca = st.selectbox("Pesquisar RM:", options=lista_rms, index=None, placeholder="Digite ou selecione a RM...", key="sb_pesquisa_rm")
-    
-    # Mantém o estado da busca ativo usando session_state para evitar perda de dados no clique
     if st.button("Pesquisar", key="btn_pesquisa_rm", use_container_width=True):
-        if busca:
-            st.session_state['ultima_busca_rm'] = str(busca).strip()
-        else:
-            st.warning("Por favor, selecione ou digite uma RM válida.")
+        if busca: st.session_state['ultima_busca_rm'] = str(busca).strip()
+        else: st.warning("Por favor, selecione ou digite uma RM válida.")
 
     if 'ultima_busca_rm' in st.session_state and st.session_state['ultima_busca_rm']:
         res = df[df['numero_rm'].astype(str) == st.session_state['ultima_busca_rm']]
@@ -176,36 +168,22 @@ elif aba_selecionada == "🔍 Consulta":
             with st.container(border=True):
                 st.markdown(f"### 📦 RM: {rm['numero_rm']}")
                 st.divider()
-                
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"**👤 Solicitante:** {rm['solicitante']}")
                     status_atual = rm['status']
-                    if status_atual in ["Separada", "Concluída"] and pd.notna(rm.get('data_saida')) and str(rm.get('data_saida')) != 'NaT':
-                        data_formatada = pd.to_datetime(rm['data_saida']).strftime('%d/%m/%Y %H:%M')
-                        st.markdown(f"**⏳ Data de Separação:** {data_formatada}")
-                    else:
-                        data_entrada = rm.get('data_entrada')
-                        if pd.notna(data_entrada) and str(data_entrada) != 'NaT':
-                            data_formatada = pd.to_datetime(data_entrada).strftime('%d/%m/%Y %H:%M')
-                        else:
-                            data_formatada = "Não registrada"
-                        st.markdown(f"**📅 RM adicionada:** {data_formatada}")
-                    
+                    data_entrada = rm.get('data_entrada')
+                    if pd.notna(data_entrada) and str(data_entrada) != 'NaT':
+                        st.markdown(f"**📅 Data:** {pd.to_datetime(data_entrada).strftime('%d/%m/%Y %H:%M')}")
                 with col2:
                     icone = "🟢" if status_atual == "Concluída" else ("🟡" if status_atual in ["Em Separação", "Separada"] else "🔴")
                     st.markdown(f"**📌 Status:** {icone} {status_atual}")
-        else:
-            st.warning("RM não encontrada no banco de dados.")
+        else: st.warning("RM não encontrada.")
 
 elif aba_selecionada == "📊 Histórico":
     st.markdown("<h3 style='text-align: center;'>📊 Histórico Completo</h3>", unsafe_allow_html=True)
-    df_hist_exibir = df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente')
-    st.dataframe(df_hist_exibir, use_container_width=True)
-    
+    st.dataframe(df[['numero_rm', 'data_retirada', 'quem_retirou', 'status']].fillna('Pendente'), use_container_width=True)
     if es_admin:
-        st.write("---")
-        st.markdown("#### 🗑️ Zona de Exclusão (Admin)")
         with st.form("form_del_hist"):
             sel = {r['id']: st.checkbox(f"RM: {r['numero_rm']}", key=f"del_chk_{r['id']}") for _, r in df.iterrows()}
             if st.form_submit_button("🗑️ Deletar Selecionadas", use_container_width=True):
