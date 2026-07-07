@@ -60,7 +60,10 @@ with st.sidebar:
     if st.button("🚪 Sair", key="btn_sair_fixed"): st.session_state['perfil_logado'] = None; st.rerun()
 
 st.title("📦 Sistema de Controle de RMs")
-tabs = st.tabs(["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"])
+
+# CORREÇÃO 1: Definir a lista de abas uma única vez para evitar vazamento visual
+lista_abas = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
+tabs = st.tabs(lista_abas)
 
 def mostrar_conteudo(nome_tab):
     if nome_tab == "📊 Dashboard":
@@ -151,10 +154,7 @@ def mostrar_conteudo(nome_tab):
                 st.success("RM cadastrada!"); recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
-        # Cria a lista de RMs disponíveis no banco para o autocompletar
         lista_rms = df['numero_rm'].dropna().astype(str).unique().tolist()
-        
-        # Substitui o text_input pelo selectbox (permite digitar e sugere as opções)
         busca = st.selectbox("Pesquisar RM:", options=lista_rms, index=None, placeholder="Digite ou selecione a RM...")
         
         if st.button("Pesquisar"):
@@ -163,7 +163,6 @@ def mostrar_conteudo(nome_tab):
                 if not res.empty:
                     rm = res.iloc[0]
                     
-                    # Criação do Card Visual para exibir as informações
                     with st.container(border=True):
                         st.markdown(f"### 📦 RM: {rm['numero_rm']}")
                         st.divider()
@@ -172,18 +171,21 @@ def mostrar_conteudo(nome_tab):
                         with col1:
                             st.markdown(f"**👤 Solicitante:** {rm['solicitante']}")
                             
-                            # Formatação da data de entrada
-                            data_entrada = rm['data_entrada']
-                            if pd.notna(data_entrada) and str(data_entrada) != 'NaT':
-                                data_formatada = pd.to_datetime(data_entrada).strftime('%d/%m/%Y %H:%M')
-                            else:
-                                data_formatada = "Não registrada"
+                            # CORREÇÃO 2: Lógica atualizada para a data exibida
+                            status_atual = rm['status']
                             
-                            st.markdown(f"**📅 Data de Entrada:** {data_formatada}")
+                            if status_atual in ["Separada", "Concluída"] and pd.notna(rm.get('data_saida')) and str(rm.get('data_saida')) != 'NaT':
+                                data_formatada = pd.to_datetime(rm['data_saida']).strftime('%d/%m/%Y %H:%M')
+                                st.markdown(f"**⏳ Data de Separação:** {data_formatada}")
+                            else:
+                                data_entrada = rm.get('data_entrada')
+                                if pd.notna(data_entrada) and str(data_entrada) != 'NaT':
+                                    data_formatada = pd.to_datetime(data_entrada).strftime('%d/%m/%Y %H:%M')
+                                else:
+                                    data_formatada = "Não registrada"
+                                st.markdown(f"**📅 RM adicionada:** {data_formatada}")
                             
                         with col2:
-                            status_atual = rm['status']
-                            # Define o ícone com base no status
                             if status_atual == "Concluída":
                                 icone = "🟢"
                             elif status_atual in ["Em Separação", "Separada"]:
@@ -197,5 +199,7 @@ def mostrar_conteudo(nome_tab):
             else:
                 st.warning("Por favor, selecione ou digite uma RM válida para pesquisar.")
 
-for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
-    with tabs[i]: mostrar_conteudo(nome)
+# Usa a variável lista_abas definida acima para garantir que as abas não se misturem
+for i, nome in enumerate(lista_abas):
+    with tabs[i]: 
+        mostrar_conteudo(nome)
