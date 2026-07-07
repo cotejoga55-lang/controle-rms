@@ -7,7 +7,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="Sistema Integrado", layout="wide")
 
-# --- FUNÇÕES ORIGINAIS ---
+# --- FUNÇÕES ---
 def conectar_banco():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds_dict = st.secrets["gcp"]
@@ -47,7 +47,7 @@ if st.session_state['perfil_logado'] is None:
                     else: st.error("Usuário ou senha inválidos.")
     st.stop()
 
-# --- CARREGAMENTO ---
+# --- CARREGAMENTO DE DADOS ---
 sheet = conectar_banco()
 dados = carregar_dados()
 df = pd.DataFrame(dados)
@@ -56,31 +56,28 @@ df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
 es_admin = (st.session_state['perfil_logado'] == "Admin")
 
-# --- NAVEGAÇÃO LATERAL ---
+# --- NAVEGAÇÃO LATERAL COM EXPANDERS ---
 with st.sidebar:
     st.markdown(f"### 👤 Perfil: **{st.session_state['perfil_logado']}**")
-    st.markdown("---")
     
-    st.subheader("📦 Controle de RM's")
-    opcoes_rm = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
-    aba_rm = st.radio("Selecione:", opcoes_rm, key="nav_rm")
+    with st.expander("📦 Controle de RM's", expanded=True):
+        opcoes_rm = ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]
+        aba_rm = st.radio("Selecione:", opcoes_rm, key="nav_rm", label_visibility="collapsed")
     
-    st.markdown("---")
-    st.subheader("🚀 Controle de Separação")
-    aba_sep = st.radio("Selecione:", ["📥 Entrada", "📑 Emitir Separação"], key="nav_sep")
+    with st.expander("🚀 Controle de Separação", expanded=True):
+        aba_sep = st.radio("Selecione:", ["📥 Entrada", "📑 Emitir Separação"], key="nav_sep", label_visibility="collapsed")
     
-    st.markdown("---")
+    st.divider()
     if st.button("🚪 Sair", use_container_width=True): 
         st.session_state['perfil_logado'] = None
         st.rerun()
 
 # --- LÓGICA DE NAVEGAÇÃO ---
 
-# 1. CÓDIGO ORIGINAL DE RMs (INTOCÁVEL)
+# 1. LÓGICA DE RMs
 if st.session_state.nav_rm:
     aba_selecionada = st.session_state.nav_rm
-    st.title("📦 Sistema de Controle de RMs")
-    st.markdown(f"#### Tela Atual: {aba_selecionada}")
+    st.title(f"📦 {aba_selecionada}")
     st.divider()
 
     if aba_selecionada == "📊 Dashboard":
@@ -197,15 +194,15 @@ if st.session_state.nav_rm:
                         if s: sheet.delete_rows(sheet.find(str(i), in_column=1).row)
                     recarregar_dados()
 
-# 2. NOVA LOGICA DE SEPARAÇÃO (INDEPENDENTE)
+# 2. LÓGICA DE SEPARAÇÃO
 elif st.session_state.nav_sep:
     aba_sep_sel = st.session_state.nav_sep
-    st.title(f"🚀 Controle de Separação: {aba_sep_sel}")
+    st.title(f"🚀 {aba_sep_sel}")
     st.divider()
 
     if aba_sep_sel == "📥 Entrada":
-        st.info("Cole os dados do Excel (Partnumber, Descrição, Subinventário, Locação, Qtd).")
-        st.text_area("Dados da Demanda (Ctrl+V):", height=200, key="txt_demanda")
+        st.info("Cole os dados (Partnumber | Descrição | Subinventário | Locação | Qtd):")
+        st.text_area("Dados da Demanda (Ctrl+V):", key="txt_demanda", height=200)
 
     elif aba_sep_sel == "📑 Emitir Separação":
         st.markdown("### 📄 Roteiro de Separação")
