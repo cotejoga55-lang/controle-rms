@@ -12,6 +12,11 @@ def conectar_banco():
     creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     return gspread.authorize(creds).open("controle_rms").get_worksheet(0)
 
+@st.cache_data(ttl=300)
+def carregar_dados():
+    sheet = conectar_banco()
+    return sheet.get_all_records()
+
 def recarregar_dados():
     st.cache_data.clear()
     st.rerun()
@@ -43,7 +48,8 @@ if st.session_state['perfil_logado'] is None:
     st.stop()
 
 sheet = conectar_banco()
-df = pd.DataFrame(sheet.get_all_records())
+dados = carregar_dados()
+df = pd.DataFrame(dados)
 df['data_entrada'] = pd.to_datetime(df['data_entrada'], errors='coerce')
 df['data_saida'] = pd.to_datetime(df['data_saida'], errors='coerce')
 df['data_retirada'] = pd.to_datetime(df['data_retirada'], errors='coerce')
