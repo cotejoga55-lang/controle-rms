@@ -151,11 +151,50 @@ def mostrar_conteudo(nome_tab):
                 st.success("RM cadastrada!"); recarregar_dados()
 
     elif nome_tab == "🔍 Consulta":
-        busca = st.text_input("Pesquisar RM:", max_chars=8)
+        # Cria a lista de RMs disponíveis no banco para o autocompletar
+        lista_rms = df['numero_rm'].dropna().astype(str).unique().tolist()
+        
+        # Substitui o text_input pelo selectbox (permite digitar e sugere as opções)
+        busca = st.selectbox("Pesquisar RM:", options=lista_rms, index=None, placeholder="Digite ou selecione a RM...")
+        
         if st.button("Pesquisar"):
-            res = df[df['numero_rm'].astype(str) == str(busca).strip()]
-            if not res.empty: st.info(f"Status da RM {busca}: {res.iloc[0]['status']}")
-            else: st.warning("Não encontrada.")
+            if busca:
+                res = df[df['numero_rm'].astype(str) == str(busca).strip()]
+                if not res.empty:
+                    rm = res.iloc[0]
+                    
+                    # Criação do Card Visual para exibir as informações
+                    with st.container(border=True):
+                        st.markdown(f"### 📦 RM: {rm['numero_rm']}")
+                        st.divider()
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"**👤 Solicitante:** {rm['solicitante']}")
+                            
+                            # Formatação da data de entrada
+                            data_entrada = rm['data_entrada']
+                            if pd.notna(data_entrada) and str(data_entrada) != 'NaT':
+                                data_formatada = pd.to_datetime(data_entrada).strftime('%d/%m/%Y %H:%M')
+                            else:
+                                data_formatada = "Não registrada"
+                            
+                            st.markdown(f"**📅 Data de Entrada:** {data_formatada}")
+                            
+                        with col2:
+                            status_atual = rm['status']
+                            # Define o ícone com base no status
+                            if status_atual == "Concluída":
+                                icone = "🟢"
+                            elif status_atual in ["Em Separação", "Separada"]:
+                                icone = "🟡"
+                            else:
+                                icone = "🔴"
+                                
+                            st.markdown(f"**📌 Status:** {icone} {status_atual}")
+                else: 
+                    st.warning("Não encontrada.")
+            else:
+                st.warning("Por favor, selecione ou digite uma RM válida para pesquisar.")
 
-for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊 Histórico"] if es_admin else ["📋 Painel", "📦 Pend. Retirada", "🔍 Consulta", "📊 Histórico"]):
-    with tabs[i]: mostrar_conteudo(nome)
+for i, nome in enumerate(nomes := ["📊 Dashboard", "📋 Painel", "📦 Pend. Retirada", "➕ Nova RM", "🔍 Consulta", "📊
