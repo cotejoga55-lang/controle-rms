@@ -29,6 +29,42 @@ def recarregar_dados():
     st.rerun()
 
 
+def localizar_coluna(sheet, nome_coluna):
+    """
+    Retorna o número da coluna pelo nome do cabeçalho.
+    A comparação ignora espaços e diferenças entre maiúsculas/minúsculas.
+    """
+    cabecalhos = [
+        str(valor).strip().lower()
+        for valor in sheet.row_values(1)
+    ]
+
+    nome_normalizado = str(nome_coluna).strip().lower()
+
+    if nome_normalizado in cabecalhos:
+        return cabecalhos.index(nome_normalizado) + 1
+
+    return None
+
+
+def garantir_coluna(sheet, nome_coluna):
+    """
+    Garante que a coluna exista no Google Sheets.
+    Caso não exista, cria o cabeçalho na primeira coluna vazia.
+    """
+    numero_coluna = localizar_coluna(sheet, nome_coluna)
+
+    if numero_coluna is not None:
+        return numero_coluna
+
+    cabecalhos = sheet.row_values(1)
+    numero_coluna = len(cabecalhos) + 1
+
+    sheet.update_cell(1, numero_coluna, nome_coluna)
+
+    return numero_coluna
+
+
 def normalizar_rm(valor):
     """
     Padroniza a RM para comparação e evita duplicidades.
@@ -205,6 +241,10 @@ with st.sidebar:
 
     if st.button("🚪 Sair", use_container_width=True):
         st.session_state["perfil_logado"] = None
+
+        # Limpa apenas o cache local para que, no próximo login,
+        # os dados sejam novamente carregados do Google Sheets.
+        st.cache_data.clear()
         st.rerun()
 
 
@@ -403,6 +443,7 @@ if st.session_state.get("nav_rm"):
                         )
                         recarregar_dados()
 
+                # Lê o comentário vindo do Google Sheets.
                 comentario_atual = row.get("comentario", "")
 
                 if pd.isna(comentario_atual):
@@ -432,21 +473,40 @@ if st.session_state.get("nav_rm"):
                                     st.warning(
                                         "Digite um comentário antes de salvar."
                                     )
+
                                 else:
                                     row_idx = sheet.find(
                                         str(row["id"]),
                                         in_column=1
                                     ).row
 
+                                    # Localiza a coluna pelo cabeçalho.
+                                    # Caso ela ainda não exista, cria "comentario".
+                                    coluna_comentario = garantir_coluna(
+                                        sheet,
+                                        "comentario"
+                                    )
+
                                     sheet.update_cell(
                                         row_idx,
-                                        11,
+                                        coluna_comentario,
                                         novo_comentario
                                     )
-                                    sheet.update_cell(
-                                        row_idx,
-                                        9,
-                                        "Comentario adicionado"
+
+                                    coluna_cobranca = localizar_coluna(
+                                        sheet,
+                                        "cobranca"
+                                    )
+
+                                    if coluna_cobranca is not None:
+                                        sheet.update_cell(
+                                            row_idx,
+                                            coluna_cobranca,
+                                            "Comentario adicionado"
+                                        )
+
+                                    st.success(
+                                        "Comentário salvo no Google Sheets."
                                     )
                                     recarregar_dados()
 
@@ -462,15 +522,31 @@ if st.session_state.get("nav_rm"):
                                     in_column=1
                                 ).row
 
+                                coluna_comentario = garantir_coluna(
+                                    sheet,
+                                    "comentario"
+                                )
+
                                 sheet.update_cell(
                                     row_idx,
-                                    11,
+                                    coluna_comentario,
                                     ""
                                 )
-                                sheet.update_cell(
-                                    row_idx,
-                                    9,
-                                    ""
+
+                                coluna_cobranca = localizar_coluna(
+                                    sheet,
+                                    "cobranca"
+                                )
+
+                                if coluna_cobranca is not None:
+                                    sheet.update_cell(
+                                        row_idx,
+                                        coluna_cobranca,
+                                        ""
+                                    )
+
+                                st.success(
+                                    "Comentário removido do Google Sheets."
                                 )
                                 recarregar_dados()
 
@@ -478,6 +554,7 @@ if st.session_state.get("nav_rm"):
                     st.info(
                         f"💬 **Comentário:** {comentario_atual}"
                     )
+
 
     elif aba_selecionada == "📦 Pend. Retirada":
         df_pendente = df[df["status"] == "Separada"]
