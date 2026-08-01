@@ -29,6 +29,24 @@ def recarregar_dados():
     st.rerun()
 
 
+def normalizar_rm(valor):
+    """
+    Padroniza a RM para comparação e evita duplicidades.
+    Também preserva números com zeros à esquerda.
+    """
+    texto = str(valor).strip()
+
+    # Corrige valores que possam vir do Google Sheets como 12345678.0.
+    if texto.endswith(".0") and texto[:-2].isdigit():
+        texto = texto[:-2]
+
+    # Como a RM possui 8 dígitos, recompõe eventuais zeros à esquerda.
+    if texto.isdigit():
+        texto = texto.zfill(8)
+
+    return texto.upper()
+
+
 def formatar_status_tempo(data_entrada, status):
     if status == "Separada":
         return "🟡 **EM PROCESSO DE SEPARAÇÃO**"
@@ -485,30 +503,61 @@ if st.session_state.get("nav_rm"):
             sol = st.text_input("Solicitante")
 
             if st.form_submit_button("Cadastrar"):
-                proximo_id = max(
-                    [
-                        int(registro["id"])
-                        for registro in sheet.get_all_records()
-                        if str(registro["id"]).isdigit()
-                    ] + [0]
-                ) + 1
+                rm_informada = normalizar_rm(num)
+                solicitante = sol.strip()
 
-                sheet.append_row([
-                    proximo_id,
-                    num,
-                    sol,
-                    datetime.now().strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    ),
-                    "",
-                    "",
-                    "",
-                    "Aberta",
-                    ""
-                ])
+                if not rm_informada:
+                    st.error("Informe o número da RM.")
 
-                st.success("RM cadastrada!")
-                recarregar_dados()
+                elif not rm_informada.isdigit() or len(rm_informada) != 8:
+                    st.error("A RM deve conter exatamente 8 dígitos.")
+
+                elif not solicitante:
+                    st.error("Informe o solicitante.")
+
+                else:
+                    # Consulta os dados atuais diretamente no Google Sheets.
+                    # Isso evita cadastrar uma RM repetida mesmo que o cache
+                    # do Streamlit ainda não tenha sido atualizado.
+                    registros_atuais = sheet.get_all_records()
+
+                    rms_existentes = {
+                        normalizar_rm(registro.get("numero_rm", ""))
+                        for registro in registros_atuais
+                    }
+
+                    if rm_informada in rms_existentes:
+                        st.error(
+                            f"A RM {rm_informada} já está cadastrada no sistema."
+                        )
+
+                    else:
+                        proximo_id = max(
+                            [
+                                int(registro["id"])
+                                for registro in registros_atuais
+                                if str(registro.get("id", "")).isdigit()
+                            ] + [0]
+                        ) + 1
+
+                        sheet.append_row([
+                            proximo_id,
+                            rm_informada,
+                            solicitante,
+                            datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            "",
+                            "",
+                            "",
+                            "Aberta",
+                            ""
+                        ])
+
+                        st.success(
+                            f"RM {rm_informada} cadastrada com sucesso!"
+                        )
+                        recarregar_dados()
 
     elif aba_selecionada == "🔍 Consulta":
         lista_rms = (
