@@ -61,6 +61,28 @@ if st.session_state["perfil_logado"] is None:
                 unsafe_allow_html=True
             )
 
+            st.markdown(
+                """
+                <div style="
+                    background-color:#f4f6f8;
+                    border:1px solid #d9dee3;
+                    border-radius:10px;
+                    padding:12px 14px;
+                    margin-bottom:14px;
+                    text-align:center;
+                ">
+                    <div style="font-weight:700; color:#1f2937; margin-bottom:6px;">
+                        👥 Acesso para visitantes
+                    </div>
+                    <div style="color:#374151; font-size:14px;">
+                        <b>Usuário:</b> cummins<br>
+                        <b>Senha:</b> 1234
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
             with st.form("login_form"):
                 usuario = st.text_input("Usuário:")
                 senha = st.text_input("Senha:", type="password")
@@ -133,6 +155,35 @@ with st.sidebar:
         )
 
     st.divider()
+
+    st.markdown(
+        """
+        <div style="
+            background:linear-gradient(135deg, #1f4e3d, #2f6f58);
+            border-radius:12px;
+            padding:14px;
+            color:white;
+            box-shadow:0 3px 10px rgba(0,0,0,0.18);
+            margin-bottom:14px;
+        ">
+            <div style="
+                font-size:14px;
+                font-weight:700;
+                margin-bottom:8px;
+                border-bottom:1px solid rgba(255,255,255,0.35);
+                padding-bottom:6px;
+            ">
+                💻 Créditos do Sistema
+            </div>
+            <div style="font-size:13px; line-height:1.7;">
+                <b>Desenvolvido por:</b> Kevin Pedro<br>
+                <b>WWID:</b> UJ455<br>
+                <b>Empresa:</b> JSL
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     if st.button("🚪 Sair", use_container_width=True):
         st.session_state["perfil_logado"] = None
