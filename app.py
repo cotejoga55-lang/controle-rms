@@ -403,34 +403,81 @@ if st.session_state.get("nav_rm"):
                         )
                         recarregar_dados()
 
+                comentario_atual = row.get("comentario", "")
+
+                if pd.isna(comentario_atual):
+                    comentario_atual = ""
+                else:
+                    comentario_atual = str(comentario_atual).strip()
+
                 with b4:
                     with st.popover("☁️ Comentários"):
                         com = st.text_area(
                             "Obs:",
-                            value=row.get("comentario", ""),
+                            value=comentario_atual,
                             key=f"com_{row['id']}"
                         )
 
-                        if st.button(
-                            "Salvar",
-                            key=f"save_{row['id']}"
-                        ):
-                            row_idx = sheet.find(
-                                str(row["id"]),
-                                in_column=1
-                            ).row
+                        col_salvar, col_remover = st.columns(2)
 
-                            sheet.update_cell(
-                                row_idx,
-                                11,
-                                com
-                            )
-                            sheet.update_cell(
-                                row_idx,
-                                9,
-                                "Comentario adicionado"
-                            )
-                            st.rerun()
+                        with col_salvar:
+                            if st.button(
+                                "💾 Salvar",
+                                key=f"save_{row['id']}",
+                                use_container_width=True
+                            ):
+                                novo_comentario = com.strip()
+
+                                if not novo_comentario:
+                                    st.warning(
+                                        "Digite um comentário antes de salvar."
+                                    )
+                                else:
+                                    row_idx = sheet.find(
+                                        str(row["id"]),
+                                        in_column=1
+                                    ).row
+
+                                    sheet.update_cell(
+                                        row_idx,
+                                        11,
+                                        novo_comentario
+                                    )
+                                    sheet.update_cell(
+                                        row_idx,
+                                        9,
+                                        "Comentario adicionado"
+                                    )
+                                    recarregar_dados()
+
+                        with col_remover:
+                            if st.button(
+                                "🗑️ Remover",
+                                key=f"remove_com_{row['id']}",
+                                use_container_width=True,
+                                disabled=not bool(comentario_atual)
+                            ):
+                                row_idx = sheet.find(
+                                    str(row["id"]),
+                                    in_column=1
+                                ).row
+
+                                sheet.update_cell(
+                                    row_idx,
+                                    11,
+                                    ""
+                                )
+                                sheet.update_cell(
+                                    row_idx,
+                                    9,
+                                    ""
+                                )
+                                recarregar_dados()
+
+                if comentario_atual:
+                    st.info(
+                        f"💬 **Comentário:** {comentario_atual}"
+                    )
 
     elif aba_selecionada == "📦 Pend. Retirada":
         df_pendente = df[df["status"] == "Separada"]
